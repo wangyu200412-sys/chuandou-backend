@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>穿斗营造与广场</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/square.css') }}">
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            scroll-behavior: smooth;
+            font-family: "Microsoft YaHei", "Noto Serif SC", serif;
+            background: #0a0605;
+        }
+
+        section {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            position: relative;
+            overflow: hidden; 
+        }
+        .jump-to-square {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #3d2314 0%, #1a0f0a 100%);
+            border: 2px solid #c9a227;
+            color: #c9a227;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            letter-spacing: 2px;
+        }
+
+        .jump-to-square:hover {
+            background: #c9a227;
+            color: #3d2314;
+            box-shadow: 0 0 20px rgba(201, 162, 39, 0.6);
+            transform: scale(1.05);
+        }
+        #game-view #game {
+            margin-top: 0; 
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+        }
+        #square-view {
+            overflow-y: auto; 
+        }
+        #square-view .main-container {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <section id="game-view">
+        <button class="jump-to-square" onclick="document.getElementById('square-view').scrollIntoView({behavior: 'smooth'})">进入广场 ▼</button>
+    </section>
+    <section id="square-view">
+    </section>
+    <script>
+    </script>
+    <script type="module" src="{{ url_for('static', filename='js/square.js') }}"></script>
+</body>
+</html>

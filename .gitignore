@@ -1,0 +1,66 @@
+# Node
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 本地临时与工具产物
+.workbuddy/scripts/
+tmp/
+
+# 本地局域网文件共享服务：认证默认关闭，不要部署到公网
+# 如需公网使用，请先开启 file_share_config.json 中的 auth.enabled 并修改默认口令
+file_share_config.json

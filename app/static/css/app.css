@@ -1,0 +1,546 @@
+/* ==================== 导航栏样式覆盖 ==================== */
+.nav-links a.active {
+    color: var(--primary-color);
+    background: rgba(201, 162, 39, 0.1);
+}
+
+.nav-links a.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 2px;
+    background: var(--primary-color);
+}
+
+/* ==================== Tab切换样式 ==================== */
+.tab-bar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    background: var(--bg-card);
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 15px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 500;
+}
+
+.tab-btn:hover {
+    color: var(--primary-color);
+    background: rgba(201, 162, 39, 0.1);
+}
+
+.tab-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #1a0f0a;
+    font-weight: 600;
+}
+
+.tab-icon {
+    font-size: 18px;
+}
+
+/* Tab内容 */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 广场布局 */
+.square-layout {
+    display: flex;
+    gap: 30px;
+}
+
+/* ==================== 游戏样式 ==================== */
+#game {
+    width: 100%;
+    height: calc(100vh - 180px);
+    display: flex;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+/* 左侧面板 - 构件列表 */
+#leftPanel {
+    width: 200px;
+    background: linear-gradient(180deg, #2d1810 0%, #1a0f0a 100%);
+    border-right: 3px solid var(--primary-color);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+#leftPanel h2 {
+    color: var(--primary-color);
+    text-align: center;
+    font-size: 16px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+/* 3D 场景区域 */
+#scene {
+    flex: 1;
+    position: relative;
+}
+
+/* 标题 */
+#title {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--primary-color);
+    font-size: 24px;
+    font-weight: bold;
+    z-index: 10;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+    letter-spacing: 2px;
+}
+
+/* 提示信息 */
+#tip {
+    position: absolute;
+    top: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-secondary);
+    font-size: 14px;
+    z-index: 10;
+    background: rgba(26, 15, 10, 0.8);
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid #5a3d2a;
+}
+
+/* 进度条 */
+#gameProgress {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-primary);
+    font-size: 15px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(26, 15, 10, 0.9);
+    padding: 10px 25px;
+    border-radius: 25px;
+    border: 1px solid #5a3d2a;
+}
+
+#gameProgressBar {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 8px;
+    background: #3d2314;
+    border-radius: 4px;
+    overflow: hidden;
+    z-index: 10;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#gameProgressFill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--primary-color) 0%, #e8d179 50%, var(--primary-color) 100%);
+    transition: width 0.4s ease;
+    box-shadow: 0 0 10px rgba(201, 162, 39, 0.5);
+}
+
+/* 重新开始按钮 */
+#gameRestartBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 25px;
+    background: linear-gradient(135deg, #3d2314 0%, #2d1810 100%);
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 14px;
+    z-index: 10;
+    transition: var(--transition);
+    font-weight: 600;
+}
+
+#gameRestartBtn:hover {
+    background: var(--primary-color);
+    color: #3d2314;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(201, 162, 39, 0.4);
+}
+
+/* 完成弹窗 */
+.complete-popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.complete-popup.show {
+    display: flex;
+    animation: fadeIn 0.5s ease;
+}
+
+.complete-content {
+    background: linear-gradient(135deg, #f4ebe0 0%, #e8dcc8 100%);
+    padding: 40px;
+    border-radius: 12px;
+    text-align: center;
+    border: 4px solid var(--primary-color);
+    max-width: 550px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.complete-content h1 {
+    color: #3d2314;
+    margin: 0 0 15px 0;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.complete-content p {
+    color: #2c1810;
+    margin-bottom: 25px;
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+.complete-content button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e8d179 100%);
+    border: none;
+    color: #3d2314;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.complete-content button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(201, 162, 39, 0.5);
+}
+
+/* 拖拽指示器 */
+#gameDragIndicator {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    background: linear-gradient(135deg, rgba(201, 162, 39, 0.95), rgba(232, 209, 121, 0.95));
+    color: #1a0f0a;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    display: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* 帮助弹窗 */
+.help-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.help-modal.show {
+    display: flex;
+}
+
+.help-content {
+    background: linear-gradient(135deg, #f4ebe0 0%, #e8dcc8 100%);
+    padding: 30px;
+    border-radius: 12px;
+    border: 3px solid var(--primary-color);
+    max-width: 500px;
+}
+
+.help-content h2 {
+    color: #3d2314;
+    margin-bottom: 20px;
+    font-size: 22px;
+}
+
+.help-content ul {
+    list-style: none;
+    padding: 0;
+}
+
+.help-content li {
+    padding: 10px 0;
+    color: #2c1810;
+    font-size: 14px;
+    line-height: 1.8;
+    border-bottom: 1px solid #d4c8b8;
+}
+
+.help-content li:last-child {
+    border-bottom: none;
+}
+
+.help-content .closeHelp {
+    margin-top: 20px;
+    padding: 10px 25px;
+    background: linear-gradient(135deg, var(--primary-color), #e8d179);
+    border: none;
+    border-radius: 6px;
+    color: #3d2314;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    width: 100%;
+}
+
+/* 工匠对话框 */
+#gameCraftsmanDialog {
+    position: fixed;
+    right: 20px;
+    top: 20%;
+    width: 340px;
+    background: linear-gradient(135deg, #f4ebe0 0%, #e8dcc8 100%);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 0 0 3px #3d2314, 0 0 0 6px var(--primary-color), 0 10px 30px rgba(0,0,0,0.3);
+    display: none;
+    z-index: 25;
+    font-family: "Microsoft YaHei", "Noto Serif SC", serif;
+}
+
+#gameCraftsmanDialog.show {
+    display: block;
+    animation: dialogFadeIn 0.4s ease;
+}
+
+@keyframes dialogFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+#gameCraftsmanName {
+    color: var(--primary-color);
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#gameCraftsmanMessage {
+    color: #2c1810;
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 12px;
+    background: rgba(201, 162, 39, 0.08);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+#gameCraftsmanTip {
+    color: #8b7355;
+    font-size: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed #b8a898;
+    font-style: italic;
+}
+
+#gameCraftsmanDialog.warning {
+    border-left: 6px solid #a83232;
+}
+
+#gameCraftsmanDialog.warning #gameCraftsmanMessage {
+    background: rgba(168, 50, 50, 0.08);
+    border-left-color: #a83232;
+}
+
+#gameCraftsmanDialog.guide {
+    border-left: 6px solid #4a8a44;
+}
+
+#gameCraftsmanDialog.guide #gameCraftsmanMessage {
+    background: rgba(74, 138, 68, 0.08);
+    border-left-color: #4a8a44;
+}
+
+/* 古籍弹窗 */
+.book-popup {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 320px;
+    background: linear-gradient(135deg, #f4ebe0 0%, #e8dcc8 100%);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 0 3px #3d2314, 0 0 0 6px var(--primary-color), 0 10px 30px rgba(0,0,0,0.3);
+    display: none;
+    z-index: 20;
+    font-family: "Noto Serif SC", serif;
+}
+
+.book-popup.show {
+    display: block;
+    animation: bookSlideIn 0.4s ease;
+}
+
+@keyframes bookSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+.book-popup.success {
+    border-left: 5px solid #2d5a27;
+}
+
+.book-popup.error {
+    border-left: 5px solid #a83232;
+}
+
+#gameBookTitle {
+    color: var(--primary-color);
+    font-size: 16px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#gameBookQuote {
+    color: #2c1810;
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 12px;
+    background: rgba(201, 162, 39, 0.1);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 4px;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+#gameBookSource {
+    color: #8b7355;
+    font-size: 11px;
+    text-align: right;
+    margin-bottom: 12px;
+    font-style: italic;
+}
+
+#gameBookExp {
+    color: #2c1810;
+    font-size: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #b8a898;
+    line-height: 1.6;
+}
+
+/* 响应式 */
+@media (max-width: 1200px) {
+    .square-layout {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        position: static;
+    }
+    
+    #game {
+        height: calc(100vh - 220px);
+    }
+}
+
+@media (max-width: 768px) {
+    .tab-bar {
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        flex: 1;
+        min-width: 120px;
+        justify-content: center;
+    }
+    
+    #game {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    #leftPanel {
+        width: 100%;
+        max-height: 200px;
+        border-right: none;
+        border-bottom: 3px solid var(--primary-color);
+    }
+    
+    #gameProgress,
+    #gameProgressBar,
+    #gameRestartBtn {
+        position: static;
+        transform: none;
+        margin: 10px auto;
+    }
+}

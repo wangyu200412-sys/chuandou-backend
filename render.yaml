@@ -1,0 +1,44 @@
+# Render Blueprint（免费方案：Render Free Web Service + Supabase Free Postgres）
+#
+# 数据库使用 Supabase，不在 Render 上创建付费数据库。
+# 首次通过 Blueprint 创建时，DATABASE_URL 会提示你手工填入（sync: false 不会写入 Git）。
+services:
+  - type: web
+    name: chuandou-backend
+    runtime: python
+    region: singapore
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    # 先建表再启动；免费实例没有 preDeployCommand 权限
+    startCommand: python init_db.py && gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120 run:app
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: FLASK_ENV
+        value: production
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: INIT_DB_ON_START
+        value: "true"
+      - key: UPLOAD_STORAGE
+        value: local
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      # Supabase 连接串：Dashboard -> Connect -> Session pooler，端口 5432
+      # 常见形式：postgresql://postgres.<PROJECT-REF>:<PASSWORD>@<POOLER-HOST>:5432/postgres
+      - key: DATABASE_URL
+        sync: false
+      # 百度内容审核（可选；留空则不做审核拦截）
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_SECRET_KEY
+        sync: false
+      - key: AI_CONTENT_CHECK
+        value: "false"
+      # 前后端同源部署，默认无需跨域；如前端独立域名部署再填写：
+      # - key: CORS_ORIGINS
+      #   value: https://your-frontend-domain.com

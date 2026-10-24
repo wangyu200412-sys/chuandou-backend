@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>穿斗·匠心</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Lato:wght@300;400;700&family=Noto+Serif+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <       margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-dark: #050814;
+            --primary-light: #e6edf3;
+            --accent-gold: #d4b984;
+            --accent-gold-light: #f5d699;
+            --accent-cyan: #00ffcc;
+            --bg-light: #0a0e17;
+            --bg-cream: #111625;
+            --text-dark: #e6edf3;
+            --text-gray: #a1b0c0;
+            --text-light: #6e7a89;
+            --glass-bg: rgba(10, 14, 23, 0.65);
+            --glass-border: rgba(212, 185, 132, 0.2);
+            --shadow-soft: 0 4px 30px rgba(0, 0, 0, 0.5);
+            --shadow-hover: 0 0 20px rgba(212, 185, 132, 0.3), inset 0 0 15px rgba(212, 185, 132, 0.1);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Noto Serif SC', 'Lato', serif;
+            color: var(--text-dark);
+            background: var(--primary-dark);
+            background-image: 
+                linear-gradient(rgba(5, 8, 20, 0.9), rgba(5, 8, 20, 0.9)),
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4b984' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(5, 8, 20, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 1001;
+            border-bottom: 1px solid var(--glass-border);
+            transition: var(--transition);
+        }
+
+        .navbar.scrolled {
+            background: rgba(5, 8, 20, 0.85);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.8);
+            border-bottom: 1px solid rgba(212, 185, 132, 0.4);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--primary-light);
+            text-decoration: none;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        .logo span {
+            color: var(--accent-gold);
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+        }
+
+        .nav-item {
+            position: relative;
+        }
+
+        .nav-menu a {
+            font-family: 'Lato', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--text-gray);
+            text-decoration: none;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: var(--transition);
+            position: relative;
+            display: block;
+        }
+        
+        .nav-menu a:hover {
+            color: var(--accent-gold);
+            text-shadow: 0 0 8px rgba(212, 185, 132, 0.5);
+        }
+
+
+.nav-subtitle {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    
+
+    background: rgba(20, 25, 30, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(196, 165, 116, 0.5);
+    box-shadow: 0 0 15px rgba(196, 165, 116, 0.2), inset 0 0 10px rgba(196, 165, 116, 0.1);
+    
+    color: var(--primary-light);
+    padding: 0.8rem 1.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1001;
+    pointer-events: none;
+    letter-spacing: 1px;
+}
+
+        .nav-subtitle::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid var(--primary-dark);
+        }
+
+        .nav-item:hover .nav-subtitle {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(5px);
+        }
+
+
+        .has-dropdown { position: relative; }
+        .nav-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(20, 25, 30, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(196, 165, 116, 0.5);
+            box-shadow: 0 0 15px rgba(196, 165, 116, 0.2);
+            border-radius: 4px;
+            padding: 0.5rem 0;
+            min-width: 140px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1050;
+        }
+        .nav-dropdown::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid rgba(20, 25, 30, 0.85);
+        }
+        .has-dropdown:hover .nav-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(5px);
+            pointer-events: auto;
+        }
+        .nav-dropdown a {
+            display: block !important;
+            padding: 0.8rem 1.5rem !important;
+            color: #e6edf3 !important;
+            text-align: center;
+            font-size: 0.85rem !important;
+            border-bottom: 1px solid rgba(196, 165, 116, 0.1);
+            text-transform: none !important;
+            letter-spacing: 2px !important;
+        }
+        .nav-dropdown a:last-child {
+            border-bottom: none;
+        }
+        .nav-dropdown a:hover {
+            color: #d4b984 !important;
+            background: rgba(212, 185, 132, 0.1);
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .lang-switch {
+            position: relative;
+        }
+
+        .lang-btn {
+            padding: 0.6rem 1.5rem;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 2px solid var(--primary-dark);
+            background: transparent;
+            color: var(--primary-dark);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .lang-btn:hover {
+            background: var(--primary-dark);
+            color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .lang-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--primary-light);
+            min-width: 150px;
+            box-shadow: var(--shadow-soft);
+            border-radius: 0 0 4px 4px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: var(--transition);
+        }
+
+        .lang-switch:hover .lang-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(5px);
+        }
+
+        .lang-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1rem;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            font-family: 'Lato', sans-serif;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .lang-item:last-child {
+            border-bottom: none;
+        }
+
+        .lang-item:hover {
+            background: var(--bg-light);
+            color: var(--accent-gold);
+            padding-left: 1.5rem;
+        }
+
+        .lang-item.active {
+            background: var(--bg-cream);
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+
+
+        .hero {
+            position: relative;
+            height: 100vh;
+            min-height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--primary-light);
+            padding: 0 2rem;
+            overflow: hidden;
+        }
+
+        .hero-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 0%, rgba(5, 8, 20, 0.8) 100%),
+                        linear-gradient(rgba(5, 8, 20, 0.3), rgba(5, 8, 20, 0.3));
+            z-index: 2;
+        }
+        
+        .hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(212, 185, 132, 0.05) 2px, rgba(212, 185, 132, 0.05) 4px);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+            animation: fadeInUp 1.2s ease-out;
+            z-index: 3;
+            pointer-events: none; /* 穿透到背后模型 */
+        }
+
+        .hero-subtitle {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 1.2rem;
+            font-weight: 300;
+            letter-spacing: 0.45em;
+            color: #fafafa;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45);
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        #main-title {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 72px;
+            font-weight: 200; /* 极致纤细 */
+            color: #ffffff; /* 亮白色 */
+            line-height: 1.2;
+            letter-spacing: 0.45em;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45);
+            margin-bottom: 20px;
+        }
+
+        #sub-title {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 1.4rem;
+            font-weight: 300;
+            color: #fafafa;
+            letter-spacing: 0.45em;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45);
+            margin-bottom: 30px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            pointer-events: auto; /* 给按钮单独增加 pointer-events 还原交互 */
+        }
+
+        .btn-hero {
+            rpxt-decoration: none;
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+         t:ottn 
+b
+        .btn-hero-primary:hover {
+            background: rgba(212, 185, 132, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 0 25px rgba(212, 185, 132, 0.4);
+            color: var(-rcbvar(--text-gray);
+            color: var(--primary-light);
+        }
+
+        .btn-hero-secondary:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            box-shadow:3px);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            animation: bounce 2s infinite;
+        }
+
+        .scroll-indicator span {
+            font-family: 'Lato', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .scroll-indicator::after {
+            content: '';
+            width: 1px;
+            height: 60px;
+            background: linear-gradient(to bottom, var(--primary-light), transparent);
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .features {
+            padding: 8rem 3rem;
+            background: transparent;
+        }
+
+        .features-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4rem;
+        }
+
+        .feature-card {
+            text-align: center;
+            padding: 3rem 2rem;
+            transition: var(--transition);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+        
+        .feature-card::before, .feature-card::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-style: solid;
+            border-color: var(--accent-gold);
+            transition: var(--transition);
+        }
+        
+        .feature-card::before {
+            top: -1px; left: -1px;
+            border-width: 2px 0 0 2px;
+        }
+        
+        .feature-card::after {
+            bottom: -1px; right: -1px;
+            border-width: 0 2px 2px 0;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-hover);
+            border-color: rgba(212, 185, 132, 0.5);
+        }
+        
+        .feature-card:hover::before, .feature-card:hover::after {
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--accent-gold);
+            text-shadow: 0 0 10px rgba(212, 185, 132, 0.3);
+        }
+
+        .feature-description {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: var(--text-gray);
+        }
+
+
+        .gallery {
+            padding: 8rem 0;
+            background: transparent;
+        }
+
+        .gallery-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 3rem;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-subtitle {
+            font-family: 'Lato', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--accent-gold);
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--primary-light);
+            text-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+
+        .section-line {
+            width: 80px;
+            height: 2px;
+            background: var(--accent-gold);
+            box-shadow: 0 0 10px var(--accent-gold);
+            margin: 0 auto;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+            border: 1px solid var(--glass-border);
+            aspect-ratio: 4/3;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s ease;
+        }
+        
+        .gallery-item::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 1px solid var(--accent-cyan);
+            opacity: 0;
+            z-index: 2;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+        
+        .gallery-item:hover::before {
+            opacity: 0.5;
+            inset: 10px;
+        }
+
+        .gallery-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+            opacity: 0;
+            transition: var(--transition);
+            display: flex;
+            align-items: flex-end;
+            padding: 2rem;
+        }
+
+        .gallery-item:hover .gallery-overlay {
+            opacity: 1;
+        }
+
+        .gallery-caption {
+            color: var(--primary-light);
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            transform: translateY(20px);
+            transition: var(--transition);
+        }
+
+        .gallery-item:hover .gallery-caption {
+            transform: translateY(0);
+        }
+
+        .cta {
+            padding: 10rem 3rem;
+            background: var(--primary-dark);
+            color: var(--primary-light);
+            text-align: center;
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+            position: relative;
+        }
+        
+        .cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(212, 185, 132, 0.1) 0%, transparent 70%);
+        }
+
+        .cta-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .cta-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta-description {
+            font-size: 1.1rem;
+            font-weight: 300;
+            line-height: 1.8;
+            margin-bottom: 3rem;
+            opacity: 0.9;
+        }
+
+
+        .footer {
+            background: #020308;
+            color: var(--text-gray);
+            padding: 4rem 3rem 2rem;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 3rem;
+        }
+
+        .footer-brand h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--primary-light);
+            margin-bottom: 1rem;
+        }
+
+        .footer-brand p {
+            font-size: 0.95rem;
+            line-height: 1.8;
+        }
+
+        .footer-title {
+            font-family: 'Lato', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary-light);
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: var(--text-gray);
+            text-decoration: none;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-gold);
+            transform: translateX(5px);
+            display: inline-block;
+        }
+
+        .footer-bottom {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-top: 3rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+
+        @media (max-width: 1024px) {
+            #main-title {
+                    font-size: 56px;
+                    letter-spacing: 0.25em;
+            }
+            #sub-title {
+                    font-size: 1.2rem;
+                    letter-spacing: 0.2em;
+            }
+
+            .features-container,
+            .gallery-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-menu {
+                display: none;
+            }
+
+            #main-title {
+                font-size: 56px;
+                letter-spacing: 8px;
+            }
+            #sub-title {
+                font-size: 1.4rem;
+                letter-spacing: 4px;
+            }
+
+            .features-container,
+            .gallery-grid,
+            .footer-container {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .features,
+            .gallery,
+            .cta {
+                padding: 4rem 1.5rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">穿斗<span>·</span>匠心</a>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="/" data-nav="home" data-lang-text="nav-home">首页</a>
+                </li>e" data-nav="about" data-lang-text="nav-about">穿斗营造</a>
+                    <div class="nav-subtitle" data-lang-text="nav-about-subtitle">360°探寻新场古镇的梁架与榫卯</div>
+                </li>
+            <li class="nav-item">
+                <a href=
+                <li class="nav-item">
+                    <a href="/seismic" data-nav="experience" data-lang-text="nav-experience">读懂智慧</a>
+                    <div class="nav-subtitle" data-lang-text="nav-experience-subtitle">看图说话，了解穿斗式建筑为什么能抗震</div>
+                </li>
+            </ul>
+            <div class="nav-actions">
+            </div>
+        </div>
+    </nav>
+
+  
+    <section class="hero" id="home">
+        <video class="hero-video" autoplay muted loop playsinline poster="{{ url_for('static', filename='images/hero-bg.jpg') }}">
+            <source src="{{ url_for('static', filename='videos/cover_video.mp4') }}" type="video/mp4">
+        </video>
+        <div class="hero-content">
+            <p class="hero-subtitle" data-lang-text="hero-subtitle">发现千年古韵</p>
+            <h1 id="main-title" data-lang-text="hero-title">解构穿斗 重建传奇</h1>
+            <p id="sub-title" data-lang-text="hero-description">从古籍智慧到指尖游戏，解锁川西建筑的抗震密码</p>
+            <div class="hero-buttons">
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <span id="scrollText" data-lang-text="scroll">Scroll</span>
+        </div>
+    </section>
+
+
+    <section class="features" id="about">
+        <div class="features-container">
+            <div class="feature-card">
+                <div class="feature-icon">🏛️</div>
+                <h3 class="feature-title" data-lang-text="feature1-title">古建筑群</h3>
+                <p class="feature-description" data-lang-text="feature1-desc">保存完好的明清建筑,雕梁画栋,飞檐翘角,每一处细节都彰显着传统工艺的精湛与智慧。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌸</div>
+                <h3 class="feature-title" data-lang-text="feature2-title">水乡风情</h3>
+                <p class="feature-description" data-lang-text="feature2-desc">小桥流水人家,桨声灯影。乘坐乌篷船穿行于水道之间,体验最纯粹的水乡生活。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎭</div>
+                <h3 class="feature-title" data-lang-text="feature3-title">非遗文化</h3>
+                <p class="feature-description" data-lang-text="feature3-desc">皮影戏、评弹、剪纸...丰富多彩的非物质文化遗产在这里传承,等待着您的探访。</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="gallery" id="gallery">
+        <div class="gallery-container">
+            <div class="section-header">
+                <p class="section-subtitle" data-lang-text="gallery-subtitle">Photography</p>
+                <h2 class="section-title" data-lang-text="gallery-title">古镇美景</h2>
+                <div class="section-line"></div>
+            </div>
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1599669528775-d669e0f7353a?w=800&q=80" alt="古镇街景">
+                    <div class="gallery-overlay">
+                        <p class="gallery-caption" data-lang-text="gallery-caption1">青石板巷</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1529535370088-732054076e93?w=800&q=80" alt="小桥流水">
+                    <div class="gallery-overlay">
+                        <p class="gallery-caption" data-lang-text="gallery-caption2">小桥流水</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1534333229745-1d5d066b87133?w=800&q=80" alt="古建筑">
+                    <div class="gallery-overlay">
+                        <p class="gallery-caption" data-lang-text="gallery-caption3">古建筑</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80" alt="夜景">
+                    <div class="gallery-overlay">
+                        <p class="gallery-caption" data-lang-text="gallery-caption4">古镇夜景</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80" alt="灯笼">
+                    <div class="gallery-overlay">
+                        <p class="gallery-caption" data-lang-text="gallery-caption5">红灯笼</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=800&q=80" alt="茶馆">
+                    <div class="gallery-overlay">
+                        <p class="gallery-caption" data-lang-text="gallery-caption6">老茶馆</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="experience" style="background: var(--bg-cream);">
+        <div class="features-container">
+            <div class="feature-card">
+                <div class="feature-icon">🛶</div>
+                <h3 class="feature-title" data-lang-text="experience1-title">乌篷船游</h3>
+                <p class="feature-description" data-lang-text="experience1-desc">乘坐传统乌篷船,穿梭于古镇水道之中,欣赏两岸古建筑,听船夫讲述古镇的古老传说。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🍜</div>
+                <h3 class="feature-title" data-lang-text="experience2-title">古镇美食</h3>
+                <p class="feature-description" data-lang-text="experience2-desc">品尝正宗的江南美食,桂花糯米藕、小笼包、酒酿圆子...每一道都是地道的味道。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏨</div>
+                <h3 class="feature-title" data-lang-text="experience3-title">民宿体验</h3>
+                <p class="feature-description" data-lang-text="experience3-desc">入住精心改造的古镇民宿,在明清风格的房间中,感受古韵与现代舒适度的完美结合。</p>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="cta" id="contact">
+        <div class="cta-content">
+            <h2 class="cta-title" data-lang-text="cta-title">开启您的古镇之旅</h2>
+            <p class="cta-description" data-lang-text="cta-description">即刻预订,开启一段穿越时光的旅程。我们期待与您在古镇相遇,共同探索这份千年的美好。</p>
+            <div class="hero-buttons">
+                <button class="btn-hero btn-hero-primary" data-lang-text="cta-btn-primary">立即预订</button>
+                <button class="btn-hero btn-hero-secondary" data-lang-text="cta-btn-secondary">联系我们</button>
+            </div>
+        </div>
+    </section>
+
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3 data-lang-text="footer-brand">穿斗·匠心</h3>
+                <p data-lang-text="footer-desc">传承千年文化,展现古镇魅力。我们致力于保护和弘扬中国古镇的传统文化与建筑艺术,让更多人了解和喜爱这份珍贵的文化遗产。</p>
+            </div>
+            <div>
+                <h4 class="footer-title" data-lang-text="footer-links-title">快速链接</h4>
+                <ul class="footer-links">
+                    <li><a href="/timeline" data-lang-text="footer-link-about">穿斗营造</a></li>
+                <li><a href="{{ url_for('square') }}" data-lang-text="footer-link-gallery">寻访古建</a></li>
+                    <li><a href="/seismic" data-lang-text="footer-link-experience">读懂智慧</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title" data-lang-text="footer-info-title">游览信息</h4>
+                <ul class="footer-links">
+                    <li><a href="#" data-lang-text="footer-info-hours">开放时间</a></li>
+                    <li><a href="#" data-lang-text="footer-info-ticket">门票价格</a></li>
+                    <li><a href="#" data-lang-text="footer-info-transport">交通指南</a></li>
+                    <li><a href="#" data-lang-text="footer-info-faq">常见问题</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title" data-lang-text="footer-contact-title">联系我们</h4>
+                <ul class="footer-links">
+                    <li><a href="#" data-lang-text="footer-contact-wechat">微信公众号</a></li>
+                    <li><a href="#" data-lang-text="footer-contact-weibo">新浪微博</a></li>
+                    <li><a href="#" data-lang-text="footer-contact-douyin">抖音</a></li>
+                    <li><a href="#" data-lang-text="footer-contact-email">邮箱</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p id="footerCopyright" data-lang-text="copyright">© 2024 穿斗·匠心. All rights reserved.</p>
+        </div>
+    </footer>
+
+   </body>
+</html>

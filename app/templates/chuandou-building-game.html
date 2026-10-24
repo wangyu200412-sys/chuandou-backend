@@ -1,0 +1,3196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>穿斗营造 - 穿斗式建筑</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 100%);
+            font-family: "Microsoft YaHei", "Noto Serif SC", serif;
+        }
+
+        #game {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+        #leftPanel {
+            width: 190px;
+            background: linear-gradient(180deg, #13171d 0%, #0d1015 100%);
+            border-right: 1px solid rgba(196, 165, 116, 0.35);
+            padding: clamp(8px, 1.2vh, 14px) 10px;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(4px, 0.7vh, 8px);
+            z-index: 10;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6);
+            box-sizing: border-box;
+            height: 100vh;
+            overflow-y: hidden;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        #leftPanel h2 {
+            color: #c4a574;
+            text-align: center;
+            font-family: 'Noto Serif SC', serif;
+            font-size: clamp(14px, 1.6vh, 16px);
+            margin: 0 0 clamp(4px, 0.8vh, 8px) 0;
+            padding-bottom: clamp(4px, 0.6vh, 6px);
+            border-bottom: 1px solid rgba(196, 165, 116, 0.2);
+            font-weight: 600;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+            flex-shrink: 0;
+            letter-spacing: 2px;
+        }
+
+        .part-item {
+            flex: 1;
+            min-height: 20px;
+            max-height: 52px;
+            padding: 0 10px;
+            background: linear-gradient(135deg, rgba(28, 34, 42, 0.88) 0%, rgba(18, 22, 28, 0.94) 100%);
+            border: 1px solid rgba(196, 165, 116, 0.25);
+            color: #d8dfdb;
+            cursor: grab;
+            text-align: center;
+            border-radius: 4px;
+            font-size: clamp(12px, 1.35vh, 14px);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+            transition: all 0.25s ease;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        }
+
+        .part-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(196, 165, 116, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .part-item:hover::before {
+            left: 100%;
+        }
+
+        .part-item:hover {
+            border-color: rgba(196, 165, 116, 0.65);
+            background: linear-gradient(135deg, rgba(38, 46, 58, 0.95) 0%, rgba(24, 30, 38, 0.95) 100%);
+            color: #f5ede1;
+            transform: translateX(5px);
+            box-shadow: 0 0 12px rgba(196, 165, 116, 0.25);
+        }
+
+        .part-item.selected {
+            border-color: #52c41a !important;
+            background: linear-gradient(135deg, rgba(38, 85, 34, 0.95) 0%, rgba(22, 53, 20, 0.95) 100%) !important;
+            box-shadow: 0 0 14px rgba(82, 196, 26, 0.65) !important;
+            transform: translateX(6px) !important;
+            color: #eaff8f !important;
+        }
+
+        .part-item.dragging {
+            opacity: 0.95;
+            background: linear-gradient(135deg, #389e0d 0%, #237804 100%) !important;
+            border-color: #73d13d !important;
+            color: #ffffff !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(82, 196, 26, 0.8) !important;
+        }
+
+        .part-item.placed {
+            background: linear-gradient(135deg, #233b20 0%, #172715 100%);
+            border-color: #389e0d;
+            color: #95de64;
+            cursor: default;
+        }
+
+        .part-item.placed::after {
+            content: '✓';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #52c41a;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        #scene {
+            flex: 1;
+            position: relative;
+        }
+        #title {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #c4a574;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 22px;
+            font-weight: 600;
+            z-index: 10;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+            letter-spacing: 3px;
+        }
+        #tip {
+            position: absolute;
+            top: 82px !important;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #8c7d6c;
+            font-size: 13px;
+            z-index: 10;
+            background: rgba(20, 14, 10, 0.7);
+            padding: 2px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(80, 60, 42, 0.35);
+        }
+        #book {
+            position: absolute;
+            right: 20px;
+            bottom: 75px;
+            width: 320px;
+            background: rgba(20, 25, 30, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(196, 165, 116, 0.45);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8), 0 0 20px rgba(196, 165, 116, 0.12);
+            border-radius: 8px;
+            padding: 16px 20px;
+            display: none;
+            z-index: 20;
+            font-family: "Noto Serif SC", serif;
+            cursor: pointer;
+        }
+
+        #book.show {
+            display: block;
+            animation: bookSlideIn 0.4s ease;
+        }
+
+        @keyframes bookSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #book.success {
+            border-left: 4px solid #52c41a;
+        }
+
+        #book.error {
+            border-left: 4px solid #d9534f;
+        }
+
+        #bookTitle {
+            color: #c4a574;
+            font-size: 16px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #bookQuote {
+            color: #d8dfdb;
+            font-size: 13px;
+            line-height: 1.8;
+            padding: 12px;
+            background: rgba(196, 165, 116, 0.08);
+            border-left: 3px solid rgba(196, 165, 116, 0.6);
+            border-radius: 4px;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        #bookSource {
+            color: #a49c90;
+            font-size: 11px;
+            text-align: right;
+            margin-bottom: 12px;
+            font-style: italic;
+        }
+
+        #bookExp {
+            color: #c8cfd6;
+            font-size: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(196, 165, 116, 0.25);
+            line-height: 1.6;
+        }
+        #progress {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #c4a574;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 14px;
+            letter-spacing: 1px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(18, 22, 28, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 7px 22px;
+            border-radius: 20px;
+            border: 1px solid rgba(196, 165, 116, 0.35);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+        }
+
+        #progressBar {
+            position: absolute;
+            bottom: 58px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            height: 6px;
+            background: rgba(18, 22, 28, 0.85);
+            border: 1px solid rgba(196, 165, 116, 0.25);
+            border-radius: 3px;
+            overflow: hidden;
+            z-index: 10;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+        }
+
+        #progressFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #8c734b 0%, #c4a574 50%, #8c734b 100%);
+            box-shadow: 0 0 8px rgba(196, 165, 116, 0.5);
+            transition: width 0.4s ease;
+        }
+
+        #restartBtn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 18px;
+            background: rgba(18, 22, 28, 0.85);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(196, 165, 116, 0.35);
+            color: #c4a574;
+            font-family: 'Noto Serif SC', serif;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+            z-index: 10;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        #restartBtn:hover {
+            background: rgba(196, 165, 116, 0.25);
+            border-color: rgba(196, 165, 116, 0.65);
+            color: #f5ede1;
+            box-shadow: 0 0 12px rgba(196, 165, 116, 0.3);
+            transform: translateY(-1px);
+        }
+
+        #complete {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #complete.show {
+            display: flex;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #completeContent {
+            background: rgba(20, 25, 30, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(196, 165, 116, 0.5);
+            max-width: 520px;
+            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 25px rgba(196, 165, 116, 0.15);
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        #completeContent h1 {
+            color: #c4a574;
+            margin: 0 0 15px 0;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+
+        #completeContent p {
+            color: #d8dfdb;
+            margin-bottom: 25px;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        #completeContent button {
+            padding: 10px 24px;
+            background: rgba(196, 165, 116, 0.2);
+            border: 1px solid #c4a574;
+            color: #c4a574;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        #completeContent button:hover {
+            background: rgba(196, 165, 116, 0.35);
+            color: #f5ede1;
+            box-shadow: 0 0 15px rgba(196, 165, 116, 0.35);
+            transform: translateY(-1px);
+        }
+        #dragIndicator {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            background: linear-gradient(135deg, rgba(46, 125, 50, 0.95), rgba(82, 196, 26, 0.95));
+            border: 1px solid rgba(160, 240, 140, 0.6);
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        #helpBtn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3a2b1d, #251b12);
+            border: 1.5px solid #6e583c;
+            color: #bfa87a;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        #helpBtn:hover {
+            transform: scale(1.08);
+            background: #463625;
+            border-color: #8a724d;
+            color: #dfd0b5;
+            box-shadow: 0 0 12px rgba(138, 114, 77, 0.3);
+        }
+        #helpModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        #helpModal.show {
+            display: flex;
+        }
+
+        #helpContent {
+            background: rgba(20, 25, 30, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 36px 40px;
+            border-radius: 8px;
+            border: 1px solid rgba(196, 165, 116, 0.5);
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(196, 165, 116, 0.12);
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        #helpContent h2 {
+            color: #c4a574;
+            font-family: 'Noto Serif SC', serif;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 22px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(196, 165, 116, 0.25);
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        #helpContent ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #helpContent li {
+            padding: 10px 14px;
+            margin-bottom: 9px;
+            color: #d8e2ea;
+            font-size: 14px;
+            line-height: 1.7;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(196, 165, 116, 0.15);
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        #helpContent li .label {
+            color: #c4a574;
+            font-weight: 600;
+        }
+
+        #helpContent li:last-child {
+            margin-bottom: 0;
+        }
+
+        #helpContent .closeHelp {
+            margin-top: 24px;
+            padding: 11px 24px;
+            background: rgba(196, 165, 116, 0.2);
+            border: 1px solid #c4a574;
+            border-radius: 4px;
+            color: #c4a574;
+            cursor: pointer;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        #helpContent .closeHelp:hover {
+            background: rgba(196, 165, 116, 0.35);
+            color: #f5ede1;
+            box-shadow: 0 0 18px rgba(196, 165, 116, 0.35);
+            transform: translateY(-1px);
+        }
+        @keyframes successPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .success-animation {
+            animation: successPulse 0.5s ease;
+        }
+        #craftsmanDialog {
+            position: absolute;
+            right: 20px;
+            bottom: 75px;
+            width: 340px;
+            background: rgba(20, 25, 30, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(196, 165, 116, 0.45);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8), 0 0 20px rgba(196, 165, 116, 0.12);
+            border-radius: 8px;
+            padding: 20px;
+            display: none;
+            z-index: 25;
+            font-family: "Noto Serif SC", serif;
+            cursor: pointer;
+        }
+
+        #craftsmanDialog.show {
+            display: block;
+            animation: dialogFadeIn 0.4s ease;
+        }
+
+        @keyframes dialogFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #craftsmanName {
+            color: #c4a574;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        #craftsmanMessage {
+            color: #d8dfdb;
+            font-size: 13px;
+            line-height: 1.8;
+            padding: 12px;
+            background: rgba(196, 165, 116, 0.08);
+            border-left: 3px solid rgba(196, 165, 116, 0.6);
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        #craftsmanTip {
+            color: #a49c90;
+            font-size: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed rgba(196, 165, 116, 0.25);
+            font-style: italic;
+        }
+
+        #craftsmanDialog.warning {
+            border-left: 4px solid #cf5656;
+        }
+
+        #craftsmanDialog.warning #craftsmanMessage {
+            background: rgba(180, 50, 50, 0.12);
+            border-left-color: #cf5656;
+            color: #e8b4b4;
+        }
+
+        #craftsmanDialog.guide {
+            border-left: 4px solid #52c41a;
+        }
+
+        #craftsmanDialog.guide #craftsmanMessage {
+            background: rgba(82, 196, 26, 0.1);
+            border-left-color: #52c41a;
+        }
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(135deg, #2d1810 0%, #1a0f0a 100%);
+            border-bottom: 2px solid #c9a227;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-brand .logo {
+            font-size: 28px;
+        }
+
+        .nav-brand .brand-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: #c9a227;
+            letter-spacing: 2px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-link {
+            color: #a8a090;
+            text-decoration: none;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: #c9a227;
+            background: rgba(201, 162, 39, 0.1);
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 2px;
+            background: #c9a227;
+        }
+        .navbar {
+            display: none !important;
+        }
+
+        #game {
+            margin-top: 0 !important;
+            height: 100vh !important;
+        }
+
+        #partsContainer { 
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: clamp(3px, 0.6vh, 6px);
+            max-height: calc(100vh - 40px);
+            flex: 1;
+            min-height: 0;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #leftPanel {
+            overflow-y: hidden;
+            justify-content: flex-start !important;
+            padding: clamp(8px, 1.2vh, 14px) 10px !important;
+            height: 100vh !important;
+            box-sizing: border-box !important;
+        }
+
+        #leftPanel::-webkit-scrollbar,
+        #partsContainer::-webkit-scrollbar { width: 4px; }
+        #leftPanel::-webkit-scrollbar-thumb,
+        #partsContainer::-webkit-scrollbar-thumb { background: rgba(196, 165, 116, 0.25); border-radius: 4px; }
+    
+        #leftPanel h2 {
+            margin: 0 0 clamp(4px, 0.8vh, 8px) 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 关卡选择与立体视角控制栏 */
+        .level-selector {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 15;
+            background: rgba(26, 15, 10, 0.85);
+            padding: 4px;
+            border-radius: 20px;
+            border: 1px solid #5a3d2a;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+        }
+
+        .level-btn {
+            background: transparent;
+            border: none;
+            color: #a8a090;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .level-btn:hover {
+            color: #f4ebe0;
+        }
+
+        
+        .level-btn.locked {
+            opacity: 0.55;
+            cursor: not-allowed !important;
+            filter: grayscale(0.4);
+        }
+        .level-btn.locked:hover {
+            color: #a8a090 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            transform: none !important;
+            border-color: #5a3d2a !important;
+        }
+        
+        .level-btn.active {
+            background: rgba(196, 165, 116, 0.22);
+            border: 1px solid rgba(196, 165, 116, 0.55);
+            color: #f5ede1;
+            box-shadow: 0 0 12px rgba(196, 165, 116, 0.25);
+        }
+
+        .view-controls {
+            position: absolute;
+            top: 15px;
+            right: 75px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 15;
+            background: rgba(18, 22, 28, 0.92);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(196, 165, 116, 0.35);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+        }
+
+        .view-hint {
+            color: #c4a574;
+            font-size: 11px;
+            margin-right: 4px;
+            user-select: none;
+            opacity: 0.9;
+        }
+
+        .view-btn {
+            background: rgba(28, 34, 42, 0.85);
+            border: 1px solid rgba(196, 165, 116, 0.2);
+            color: #d1c1a5;
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: inherit;
+        }
+
+        .view-btn:hover {
+            border-color: rgba(196, 165, 116, 0.6);
+            color: #f5ede1;
+            background: rgba(38, 46, 58, 0.9);
+        }
+
+        .view-btn.active {
+            background: rgba(196, 165, 116, 0.25);
+            color: #f5ede1;
+            border-color: rgba(196, 165, 116, 0.6);
+            font-weight: 600;
+        }
+
+        .btn-primary-gold {
+            background: linear-gradient(135deg, #ffd700 0%, #c9a227 100%) !important;
+            color: #1a0f0a !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            padding: 12px 28px !important;
+            border-radius: 8px !important;
+            border: none !important;
+            cursor: pointer !important;
+            animation: pulseGlow 1.8s infinite alternate ease-in-out;
+            transition: all 0.3s ease !important;
+        }
+
+        .btn-primary-gold:hover {
+            transform: scale(1.06) !important;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.9) !important;
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 12px rgba(201, 162, 39, 0.4); }
+            100% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.85); }
+        }
+
+        #levelBadge {
+            position: absolute;
+            top: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #c4a574;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 2.5px;
+            z-index: 10;
+            background: rgba(18, 22, 28, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 4px 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(196, 165, 116, 0.45);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), 0 0 15px rgba(196, 165, 116, 0.1);
+            white-space: nowrap;
+        }
+
+        #tip {
+            position: absolute;
+            top: 84px !important;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #a49c90;
+            font-size: 12px;
+            letter-spacing: 1px;
+            z-index: 10;
+            background: rgba(18, 22, 28, 0.7);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            padding: 3px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(196, 165, 116, 0.2);
+            white-space: nowrap;
+        }
+    </style>
+
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏛️</span>
+            <span class="brand-text">穿斗式建筑</span>
+        </div>
+        <div class="nav-links">
+            <a href="/game" class="nav-link active">穿斗营造</a>
+            <a href="/square" class="nav-link">广场</a>
+        </div>
+    </nav>
+    <div id="game">
+        <div id="leftPanel">
+            <h2>🏗️ 建筑构件</h2>
+            <div id="partsContainer"></div>
+        </div>
+        <div id="scene">
+            <div class="level-selector" id="levelSelector">
+                <button id="levelBtn1" class="level-btn active" onclick="switchToLevel(1)">第 1 关 · 单榀排架</button>
+                <button id="levelBtn2" class="level-btn locked" onclick="switchToLevel(2)" title="通关第一关后解锁"><span class="lock-icon" style="opacity:0.75; margin-right:3px;">🔒</span>第 2 关 · 立体营造</button>
+            </div>
+            <div class="view-controls" id="viewControls" style="display: none;">
+                <span class="view-hint">3D视角: 空白/右键拖拽 |</span>
+                <button class="view-btn active" id="viewBtnPerspective" onclick="setCameraView('perspective')">📐 3D立体</button>
+                <button class="view-btn" id="viewBtnFront" onclick="setCameraView('front')">🏛️ 正视</button>
+                <button class="view-btn" id="viewBtnSide" onclick="setCameraView('side')">🔍 侧视进深</button>
+                <button class="view-btn" id="viewBtnTop" onclick="setCameraView('top')">⬆️ 俯视</button>
+            </div>
+            <div id="title">穿斗营造</div>
+            <div id="levelBadge">第一关：单榀排架 · 平面基础</div>
+            <div id="tip">拖拽构件到黄色虚线框位置</div>
+        </div>
+    </div>
+
+    <div id="book" onclick="this.classList.remove('show');" title="点击关闭">
+        <div id="bookTitle"></div>
+        <div id="bookQuote"></div>
+        <div id="bookSource"></div>
+        <div id="bookExp"></div>
+    </div>
+
+    <div id="progressBar">
+        <div id="progressFill"></div>
+    </div>
+    <div id="progress">
+        进度: <span id="progressNum">0</span>/<span id="totalNum">0</span>
+    </div>
+    <button id="restartBtn">🔄 重新开始</button>
+    <div id="complete" onclick="if(event.target === this) this.classList.remove('show');">
+        <div id="completeContent">
+            <span onclick="document.getElementById('complete').classList.remove('show');" style="position: absolute; top: 15px; right: 20px; font-size: 28px; color: #8b4513; cursor: pointer; line-height: 1;">&times;</span>
+            <div id="completeIcon" style="font-size: 48px; margin-bottom: 10px;">🏛️</div>
+            <h1 id="completeTitle">恭喜复原完成!</h1>
+            <p id="completeDesc">你成功复原了穿斗式建筑结构！<br>每一根柱子、每一道穿枋都承载着古人的智慧。</p>
+            <div id="completeButtons" style="display: flex; gap: 15px; justify-content: center; margin-top: 22px; flex-wrap: wrap;">
+                <button id="btnActionPrimary" class="btn-primary-gold" onclick="enterLevel2()">🌟 进入第二关：立体空间营造 →</button>
+                <button onclick="restartCurrentLevel()">🔄 再练一次</button>
+                <button onclick="document.getElementById('complete').classList.remove('show'); window.location.href='/square';" style="background: linear-gradient(135deg, #d4b984 0%, #c4a574 100%); border:none; color:#3d2314;">🎉 逛逛广场</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dragIndicator"></div>
+
+    <div id="craftsmanDialog" onclick="this.classList.remove('show');" title="点击关闭">
+        <div id="craftsmanName">老木匠</div>
+        <div id="craftsmanMessage"></div>
+        <div id="craftsmanTip"></div>
+    </div>
+
+    <div id="helpModal">
+        <div id="helpContent">
+            <h2>📖 游戏指南</h2>
+            <ul>
+                <li>🎯 <span class="label">目标：</span>将所有建筑构件正确放置到对应位置</li>
+                <li>🖱️ <span class="label">操作：</span>点击构件拖拽到虚线框位置</li>
+                <li>✨ <span class="label">自动吸附：</span>拖到正确位置附近会自动吸附</li>
+                <li>📚 <span class="label">古籍知识：</span>正确/错误会显示相关古籍解释</li>
+                <li>🏆 <span class="label">完成：</span>所有构件放置正确即通关</li>
+            </ul>
+            <button class="closeHelp" onclick="closeHelp()">开始游戏</button>
+        </div>
+    </div>
+
+    <script>
+        const config = {
+            snapDistance: 0.8,
+            animationSpeed: 0.3,
+            showHelpOnStart: true
+        };
+        const level1PartsData = [
+            {
+                id: 'dijiaofang',
+                name: '地脚枋',
+                x: 0,
+                y: 0.04,
+                z: 0,
+                w: 5.2,
+                h: 0.08,
+                d: 0.15,
+                type: 'box',
+                order: 1,
+                initPos: { x: -5.3, y: 0.35, z: -0.2 },
+                success: {
+                    quote: '《营造法式》：“地脚枋承柱于地，稳固根基。”',
+                    source: '——宋《营造法式》',
+                    exp: '地脚枋横卧于地，将左柱、中柱、右柱底部连成稳固整体，防止沉降不均。'
+                },
+                error: {
+                    quote: '《营造法式》：“柱无地脚，则倾覆随之。”',
+                    source: '——宋',
+                    exp: '必须先安放地脚枋稳固根基，方可立柱！'
+                }
+            },
+            {
+                id: 'zuo_zhu',
+                name: '左柱',
+                x: -2.2,
+                y: 1.25,
+                z: 0,
+                r: 0.09,
+                h: 2.5,
+                type: 'cylinder',
+                order: 2,
+                initPos: { x: -4.4, y: 1.35, z: 0 },
+                success: {
+                    quote: '《营造法式》：“柱者，建筑之骨也，立木为干。”',
+                    source: '——宋《营造法式》',
+                    exp: '左侧圆柱矗立，承担左翼垂直重力，确立开间左基准。'
+                },
+                error: {
+                    quote: '《营造法式》：“基未定，柱不可立。”',
+                    source: '——宋',
+                    exp: '必须先铺设地脚枋，方可立柱！'
+                }
+            },
+            {
+                id: 'zhong_zhu',
+                name: '中柱',
+                x: 0,
+                y: 1.95,
+                z: 0,
+                r: 0.1,
+                h: 3.9,
+                type: 'cylinder',
+                order: 2,
+                initPos: { x: -3.7, y: 2.05, z: 0 },
+                success: {
+                    quote: '《鲁班经》：“中柱直贯九霄，正梁千秋之主。”',
+                    source: '——明《鲁班经》',
+                    exp: '通天中柱立于中心直通屋脊，顶承中央大脊檩，是全屋脊梁。'
+                },
+                error: {
+                    quote: '《鲁班经》：“基未定，柱不可立。”',
+                    source: '——明',
+                    exp: '必须先铺设地脚枋，方可立中柱！'
+                }
+            },
+            {
+                id: 'you_zhu',
+                name: '右柱',
+                x: 2.2,
+                y: 1.25,
+                z: 0,
+                r: 0.09,
+                h: 2.5,
+                type: 'cylinder',
+                order: 2,
+                initPos: { x: -3.0, y: 1.35, z: 0 },
+                success: {
+                    quote: '《营造法式》：“左右并立，虚实相应，开间自成。”',
+                    source: '——宋《营造法式》',
+                    exp: '右侧圆柱对称立起，与左柱、中柱共同支撑排架。'
+                },
+                error: {
+                    quote: '《营造法式》：“基未定，柱不可立。”',
+                    source: '——宋',
+                    exp: '请先铺好地脚枋！'
+                }
+            },
+            {
+                id: 'chuanfang_xia',
+                name: '穿枋（下穿）',
+                x: 0,
+                y: 2.45,
+                z: 0,
+                w: 5.0,
+                h: 0.16,
+                d: 0.1,
+                type: 'yellow_chuan',
+                order: 3,
+                initPos: { x: -5.3, y: 3.85, z: -0.2 },
+                success: {
+                    quote: '《工程做法》：“下穿贯通左右檐柱，横锁排架，立千年而不摇。”',
+                    source: '——清《工程做法》',
+                    exp: '穿枋（下穿）横贯左柱、中柱与右柱，将排架主要受力立柱锁成整体！'
+                },
+                error: {
+                    quote: '《工程做法》：“柱未立而枋安施，倒悬之患也。”',
+                    source: '——清',
+                    exp: '没有立好立柱就无法穿插横枋，请先立好左柱、中柱、右柱！'
+                }
+            },
+            {
+                id: 'zhong_guazhu',
+                name: '中穿瓜柱',
+                x: 0,
+                y: 2.73,
+                z: 0,
+                w: 0.1,
+                h: 0.55,
+                d: 0.1,
+                spanX: 1.4,
+                type: 'guazhu_pair',
+                order: 4,
+                initPos: { x: 3.4, y: 2.45, z: 0 },
+                success: {
+                    quote: '《梓人遗制》：“立瓜柱于下穿之上，逐层步架，抬举屋面。”',
+                    source: '——元《梓人遗制》',
+                    exp: '中穿瓜柱立于下穿枋之上，阶梯向上托举屋架坡度。'
+                },
+                error: {
+                    quote: '《梓人遗制》：“无梁置柱，凭空何托？”',
+                    source: '——元',
+                    exp: '中穿瓜柱必须安放于牢固的下穿枋之上！'
+                }
+            },
+            {
+                id: 'chuanfang_zhong',
+                name: '穿枋（中穿）',
+                x: 0,
+                y: 2.95,
+                z: 0,
+                w: 3.4,
+                h: 0.14,
+                d: 0.1,
+                type: 'yellow_chuan',
+                order: 5,
+                initPos: { x: 4.4, y: 0.60, z: 0 },
+                success: {
+                    quote: '《工程做法》：“腰枋横锁，中穿紧扣中柱与瓜柱。”',
+                    source: '——清《工程做法》',
+                    exp: '穿枋（中穿）横穿左右中穿瓜柱并紧扣中柱，强化排架中段刚度。'
+                },
+                error: {
+                    quote: '《工程做法》：“瓜柱未全，不可施枋。”',
+                    source: '——清',
+                    exp: '须先立好中穿瓜柱再穿入中穿枋！'
+                }
+            },
+            {
+                id: 'shang_guazhu',
+                name: '上穿瓜柱',
+                x: 0,
+                y: 3.22,
+                z: 0,
+                w: 0.1,
+                h: 0.53,
+                d: 0.1,
+                spanX: 0.7,
+                type: 'guazhu_pair',
+                order: 6,
+                initPos: { x: 4.6, y: 2.45, z: 0 },
+                success: {
+                    quote: '《梓人遗制》：“瓜柱对称步升，举折如翼，直承金檩。”',
+                    source: '——元《梓人遗制》',
+                    exp: '上穿瓜柱立于中穿之上，继续向上抬升屋面，直承上层金檩。'
+                },
+                error: {
+                    quote: '《梓人遗制》：“无梁置柱，凭空何托？”',
+                    source: '——元',
+                    exp: '请先铺好穿枋（中穿）！'
+                }
+            },
+            {
+                id: 'chuanfang_shang',
+                name: '穿枋（上穿）',
+                x: 0,
+                y: 3.42,
+                z: 0,
+                w: 2.0,
+                h: 0.13,
+                d: 0.1,
+                type: 'yellow_chuan',
+                order: 7,
+                initPos: { x: 4.0, y: 1.25, z: 0 },
+                success: {
+                    quote: '《营造法式》：“梁枋交固，单榀大成，立柱横穿，千年不倾！”',
+                    source: '——宋《营造法式》',
+                    exp: '穿枋（上穿）横穿上穿瓜柱与中柱，使全架木构彻底锁死咬合。'
+                },
+                error: {
+                    quote: '《营造法式》：“层构未具，梁安得立？”',
+                    source: '——宋',
+                    exp: '请先完成上穿瓜柱安装！'
+                }
+            },
+            {
+                id: 'zuo_tiaofang',
+                name: '挑枋（左）',
+                x: -2.5,
+                y: 2.45,
+                z: 0,
+                w: 0.8,
+                h: 0.14,
+                d: 0.1,
+                type: 'yellow_chuan',
+                order: 8,
+                initPos: { x: 3.4, y: 1.85, z: 0 },
+                success: {
+                    quote: '《营造法式》：“挑枋出挑，以承飞檐，遮风庇雨。”',
+                    source: '——宋《营造法式》',
+                    exp: '左挑枋向外悬挑伸出，承托左侧外檐与檐檩。'
+                },
+                error: {
+                    quote: '《营造法式》：“主架未成，挑枋何依？”',
+                    source: '——宋',
+                    exp: '请先完成穿枋（上穿）安装，稳固主框架后再安放挑枋！'
+                }
+            },
+            {
+                id: 'you_tiaofang',
+                name: '挑枋（右）',
+                x: 2.5,
+                y: 2.45,
+                z: 0,
+                w: 0.8,
+                h: 0.14,
+                d: 0.1,
+                type: 'yellow_chuan',
+                order: 8,
+                initPos: { x: 4.6, y: 1.85, z: 0 },
+                success: {
+                    quote: '《营造法式》：“双挑展翅，出檐深远。”',
+                    source: '——宋《营造法式》',
+                    exp: '右挑枋对称向外伸展，承托右侧檐口出挑。'
+                },
+                error: {
+                    quote: '《营造法式》：“主架未成，挑枋何依？”',
+                    source: '——宋',
+                    exp: '请先完成穿枋（上穿）安装，稳固主框架后再安放挑枋！'
+                }
+            },
+            {
+                id: 'yanlin',
+                name: '檐檩',
+                x: 0,
+                y: 2.55,
+                z: 0,
+                type: 'yanlin_pair',
+                order: 9,
+                initPos: { x: 4.0, y: 3.05, z: 0 },
+                success: {
+                    quote: '《工程做法》：“檐檩施于挑头，承接飞檐。”',
+                    source: '——清《工程做法》',
+                    exp: '檐檩安放在左右挑枋之巅，向外悬挑，奠定外檐飞椽出檐基准。'
+                },
+                error: {
+                    quote: '《工程做法》：“挑枋未设，檐檩难安。”',
+                    source: '——清',
+                    exp: '请先安放好两侧挑枋，方可架设檐檩！'
+                }
+            },
+            {
+                id: 'jinlin',
+                name: '金檩',
+                x: 0,
+                y: 3.25,
+                z: 0,
+                type: 'jinlin_group',
+                order: 10,
+                initPos: { x: 4.0, y: 3.65, z: 0 },
+                success: {
+                    quote: '《工程做法》：“金檩列于瓜柱之上，顺坡承接椽瓦。”',
+                    source: '——清《工程做法》',
+                    exp: '四根圆木金檩稳稳架设在中穿与上穿瓜柱柱头，形成阶梯顺坡受力骨架！'
+                },
+                error: {
+                    quote: '《工程做法》：“檐檩未定，金檩难安。”',
+                    source: '——清',
+                    exp: '请先安放好两侧外檐檩条！'
+                }
+            },
+            {
+                id: 'jiling',
+                name: '脊檩',
+                x: 0,
+                y: 3.92,
+                z: 0,
+                r: 0.09,
+                len: 0.8,
+                type: 'purlin',
+                order: 11,
+                initPos: { x: 4.0, y: 4.25, z: 0 },
+                success: {
+                    quote: '《鲁班经》：“上梁大吉！正脊高耸，千秋稳固，单榀排架大功告成！”',
+                    source: '——明《鲁班经》',
+                    exp: '上梁大吉！圆木大脊檩端放于通天中柱最高之巅，川西穿斗单榀五柱七架排架圆满落成！'
+                },
+                error: {
+                    quote: '《鲁班经》：“檐檩金檩未定，正脊不可升！”',
+                    source: '——明',
+                    exp: '大脊檩必须在檐檩与金檩铺就后，安放于中柱最高顶点！'
+                }
+            }
+        ];
+        const level2PartsData = [
+        {
+                id: "lvl2_dijiaofang",
+                name: "地脚枋",
+                x: 0,
+                y: 0.04,
+                z: 0,
+                type: "dijiaofang_3d",
+                order: 1,
+                stagePos: {"x": 4.4, "y": 0.15, "z": -2.1},
+                success: {
+                        quote: "《营造法式》：“定前后双基，四角平稳，三维之基立矣。”",
+                        source: "——宋《营造法式》",
+                        exp: "立体双榀地脚枋框架安放于地面，奠定前后双榀与纵深开间的稳固基石！"
+                },
+                error: {
+                        quote: "《营造法式》：“基未定，木不可立。”",
+                        source: "——宋",
+                        exp: "必须先铺设地脚枋奠定三维开间根基！"
+                }
+        },
+        {
+                id: "lvl2_zuo_zhu",
+                name: "左柱",
+                x: -2.2,
+                y: 1.25,
+                z: 0,
+                r: 0.09,
+                h: 2.5,
+                type: "column_pair_z",
+                order: 2,
+                stagePos: {"x": 4.4, "y": 1.35, "z": -1.4},
+                success: {
+                        quote: "《营造法式》：“左檐双柱立，进深自此生。”",
+                        source: "——宋《营造法式》",
+                        exp: "左侧前后两根外檐柱立于地脚枋之上，确立建筑左翼三维进深！"
+                },
+                error: {
+                        quote: "《营造法式》：“基未定，柱不可立。”",
+                        source: "——宋",
+                        exp: "请先安放地脚枋稳固根基！"
+                }
+        },
+        {
+                id: "lvl2_you_zhu",
+                name: "右柱",
+                x: 2.2,
+                y: 1.25,
+                z: 0,
+                r: 0.09,
+                h: 2.5,
+                type: "column_pair_z",
+                order: 2,
+                stagePos: {"x": 4.4, "y": 1.35, "z": -0.7},
+                success: {
+                        quote: "《营造法式》：“四柱遥立，四角安稳，三维空间柱网初成！”",
+                        source: "——宋《营造法式》",
+                        exp: "右侧前后两根外檐柱对称立起！全屋四角外檐立柱齐备，三维柱网落定！"
+                },
+                error: {
+                        quote: "《营造法式》：“基未定，柱不可立。”",
+                        source: "——宋",
+                        exp: "请先安放地脚枋！"
+                }
+        },
+        {
+                id: "lvl2_chuanfang_xia",
+                name: "穿枋（下穿）",
+                x: 0,
+                y: 2.45,
+                z: 0,
+                w: 5.0,
+                h: 0.16,
+                d: 0.1,
+                type: "chuanfang_double_z",
+                order: 3,
+                stagePos: {"x": 4.4, "y": 0.22, "z": 0.1},
+                success: {
+                        quote: "《工程做法》：“下穿横贯外檐立柱，定前后双榀开间骨架！”",
+                        source: "——清《工程做法》",
+                        exp: "前后双榀下穿枋横贯外檐檐柱，奠定前后双榀刚性骨架！"
+                },
+                error: {
+                        quote: "《工程做法》：“柱未立而枋安施，倒悬之患也。”",
+                        source: "——清",
+                        exp: "请先立好外檐立柱！"
+                }
+        },
+        {
+                id: "lvl2_zhong_zhu",
+                name: "中柱",
+                x: 0,
+                y: 1.95,
+                z: 0,
+                r: 0.1,
+                h: 3.9,
+                type: "center_pillars_3d",
+                order: 4,
+                stagePos: {"x": 4.4, "y": 2.05, "z": 1.4},
+                success: {
+                        quote: "《鲁班经》：“前后中柱顶天立地，遥遥相望托起大脊！”",
+                        source: "——明《鲁班经》",
+                        exp: "前后两根通天高柱分别立于双榀中心，拔地而起直指屋脊！"
+                },
+                error: {
+                        quote: "《鲁班经》：“下穿未锁，中柱难立。”",
+                        source: "——明",
+                        exp: "请先穿插好下穿枋！"
+                }
+        },
+        {
+                id: "lvl2_zhong_guazhu",
+                name: "中穿瓜柱",
+                x: 0,
+                y: 2.73,
+                z: 0,
+                spanX: 1.4,
+                w: 0.1,
+                h: 0.55,
+                d: 0.1,
+                type: "guazhu_group_3d",
+                order: 5,
+                stagePos: {"x": 4.4, "y": 0.35, "z": 2.1},
+                success: {
+                        quote: "《梓人遗制》：“立瓜柱于下穿之上，前后并立，逐层步架。”",
+                        source: "——元《梓人遗制》",
+                        exp: "前后双榀中穿瓜柱群（共4根）立于下穿之上，阶梯抬升屋架坡度！"
+                },
+                error: {
+                        quote: "《梓人遗制》：“无梁置柱，凭空何托？”",
+                        source: "——元",
+                        exp: "必须先安放好主构架穿枋与中柱！"
+                }
+        },
+        {
+                id: "lvl2_zuo_tiaofang",
+                name: "挑枋（左）",
+                x: -2.2,
+                y: 2.70,
+                z: 0,
+                w: 1.6,
+                h: 0.14,
+                d: 0.1,
+                type: "tiaofang_pair_z",
+                order: 6,
+                stagePos: {"x": 6.0, "y": 0.22, "z": -2.25},
+                success: {
+                        quote: "《营造法式》：“左挑双展，内倚瓜柱，出檐深远。”",
+                        source: "——宋《营造法式》",
+                        exp: "前后左挑枋置于下穿与中穿之间，内侧紧扣中穿瓜柱，向外长长悬挑！"
+                },
+                error: {
+                        quote: "《营造法式》：“瓜柱未立，挑枋无依。”",
+                        source: "——宋",
+                        exp: "请先立好中穿瓜柱，再安放挑枋！"
+                }
+        },
+        {
+                id: "lvl2_you_tiaofang",
+                name: "挑枋（右）",
+                x: 2.2,
+                y: 2.70,
+                z: 0,
+                w: 1.6,
+                h: 0.14,
+                d: 0.1,
+                type: "tiaofang_pair_z",
+                order: 6,
+                stagePos: {"x": 6.0, "y": 0.22, "z": -1.6},
+                success: {
+                        quote: "《营造法式》：“双挑展翅，出檐深远，四水归堂。”",
+                        source: "——宋《营造法式》",
+                        exp: "前后右挑枋置于下穿与中穿之间，内倚瓜柱、外展长挑，左右双翼展翅！"
+                },
+                error: {
+                        quote: "《营造法式》：“瓜柱未立，挑枋无依。”",
+                        source: "——宋",
+                        exp: "请先立好中穿瓜柱！"
+                }
+        },
+        {
+                id: "lvl2_chuanfang_zhong",
+                name: "穿枋（中穿）",
+                x: 0,
+                y: 2.95,
+                z: 0,
+                w: 3.4,
+                h: 0.14,
+                d: 0.1,
+                type: "chuanfang_double_z",
+                order: 7,
+                stagePos: {"x": 6.0, "y": 0.25, "z": -0.95},
+                success: {
+                        quote: "《工程做法》：“腰枋横锁，前后中穿紧扣中柱与瓜柱。”",
+                        source: "——清《工程做法》",
+                        exp: "前后双榀中穿枋横贯中穿瓜柱与中柱，强化空间中段刚度！"
+                },
+                error: {
+                        quote: "《工程做法》：“瓜柱挑枋未全，不可施枋。”",
+                        source: "——清",
+                        exp: "须先立好中穿瓜柱与挑枋群！"
+                }
+        },
+        {
+                id: "lvl2_shang_guazhu",
+                name: "上穿瓜柱",
+                x: 0,
+                y: 3.22,
+                z: 0,
+                spanX: 0.7,
+                w: 0.1,
+                h: 0.53,
+                d: 0.1,
+                type: "guazhu_group_3d",
+                order: 8,
+                stagePos: {"x": 6.0, "y": 0.35, "z": -0.3},
+                success: {
+                        quote: "《梓人遗制》：“瓜柱对称步升，举折如翼，直承上层金檩。”",
+                        source: "——元《梓人遗制》",
+                        exp: "前后双榀上穿瓜柱群（共4根）立于中穿之上，继续向上抬升屋面！"
+                },
+                error: {
+                        quote: "《梓人遗制》：“无梁置柱，凭空何托？”",
+                        source: "——元",
+                        exp: "请先铺好穿枋（中穿）！"
+                }
+        },
+        {
+                id: "lvl2_chuanfang_shang",
+                name: "穿枋（上穿）",
+                x: 0,
+                y: 3.42,
+                z: 0,
+                w: 2.0,
+                h: 0.13,
+                d: 0.1,
+                type: "chuanfang_double_z",
+                order: 9,
+                stagePos: {"x": 6.0, "y": 0.25, "z": 0.35},
+                success: {
+                        quote: "《营造法式》：“双榀排架木构锁死，立柱横穿，骨架大成！”",
+                        source: "——宋《营造法式》",
+                        exp: "穿枋（上穿）横穿上部瓜柱与中柱，双榀立体骨架彻底锁死咬合！"
+                },
+                error: {
+                        quote: "《营造法式》：“层构未具，梁安得立？”",
+                        source: "——宋",
+                        exp: "请先完成上穿瓜柱安装！"
+                }
+        },
+        {
+                id: "lvl2_yanlin",
+                name: "檐檩",
+                x: 0,
+                y: 2.58,
+                z: 0,
+                spanX: 2.2,
+                type: "yanlin_3d",
+                order: 10,
+                stagePos: {"x": 6.0, "y": 0.2, "z": 1.0},
+                success: {
+                        quote: "《营造法式》：“柱头承檩，外檐端严。”",
+                        source: "——宋《营造法式》",
+                        exp: "两根通长大圆木檐檩端端正正架设在左柱与右柱柱头之巅，直承外檐荷载！"
+                },
+                error: {
+                        quote: "《工程做法》：“骨架未牢，檩不可设。”",
+                        source: "——清",
+                        exp: "请先完成上穿枋的安装，方可安放檐檩！"
+                }
+        },
+        {
+                id: "lvl2_jinlin",
+                name: "金檩",
+                x: 0,
+                y: 3.25,
+                z: 0,
+                type: "jinlin_3d",
+                order: 11,
+                stagePos: {"x": 6.0, "y": 0.2, "z": 1.65},
+                success: {
+                        quote: "《工程做法》：“四架金檩通长贯插，前后挑出，双坡骨架毕备！”",
+                        source: "——清《工程做法》",
+                        exp: "四根通长圆木金檩贯通前后两榀瓜柱之巅，形成层层步架、顺坡承重的屋架骨架！"
+                },
+                error: {
+                        quote: "《工程做法》：“檐檩未定，金檩难安。”",
+                        source: "——清",
+                        exp: "请先安放好两侧外檐通长檐檩！"
+                }
+        },
+        {
+                id: "lvl2_jiling",
+                name: "脊檩",
+                x: 0,
+                y: 3.92,
+                z: 0,
+                type: "jiling_3d",
+                order: 12,
+                stagePos: {"x": 6.0, "y": 0.2, "z": 2.3},
+                success: {
+                        quote: "《鲁班经》：“上梁大吉！正脊高耸，千秋稳固，三维空间大功告成！”",
+                        source: "——明《鲁班经》",
+                        exp: "上梁大吉！通长大脊檩端放于双榀通天中柱极顶之巅，川西穿斗双榀三维空间木结构建筑圆满落成！"
+                },
+                error: {
+                        quote: "《鲁班经》：“檐檩金檩未定，正脊不可升！”",
+                        source: "——明",
+                        exp: "大脊檩必须在檐檩与金檩铺就后，安放于中柱最高顶点！"
+                }
+        }
+];
+
+        let currentLevel = 1;
+        let level1Completed = false;
+        let level2Completed = false;
+        let partsData = level1PartsData;
+        let stagingDeckGroup = null;
+
+        // 3D 视角环绕控制变量（第二关使用）
+        let isOrbiting = false;
+        let orbitStart = { x: 0, y: 0 };
+        let camRadius = 11.0;
+        let camTheta = 0.75;
+        let camPhi = Math.PI / 2.7;
+        const camTarget = new THREE.Vector3(0, 1.8, 0);
+        let rotationAnimId = null;
+
+        let scene, camera, renderer, raycaster, mouse;
+        let draggableObjects = [];
+        let targetZones = [];
+        let placedParts = [];
+        let isDragging = false;
+        let draggedObject = null;
+        let dragOffset = new THREE.Vector3();
+        let dragPlane = new THREE.Plane();
+        let builtGroup = null;
+        let errorCount = {};
+        let isReturningToOriginal = false;
+        let gameStartTime = null;
+
+        // 材质定义（严格按照真实穿斗建筑及参考图质感配置）
+        // 材质定义（古朴典雅低饱和度天然木作质感）
+        const yellowChuanMat = new THREE.MeshStandardMaterial({
+            color: 0x826c50, // 低饱和度古雅素杉木枋色，完全不泛亮黄
+            roughness: 0.75,
+            metalness: 0.02
+        });
+        const colMat = new THREE.MeshStandardMaterial({
+            color: 0x56402e, // 自然深栗圆木柱，沉实厚重素雅
+            roughness: 0.75,
+            metalness: 0.02
+        });
+        const beamMat = new THREE.MeshStandardMaterial({
+            color: 0x403023, // 质朴深栗木枋
+            roughness: 0.8,
+            metalness: 0.02
+        });
+        const purlinMat = new THREE.MeshStandardMaterial({
+            color: 0x8c7c66, // 素雅深灰木色圆木檩条，无反光
+            roughness: 0.75,
+            metalness: 0.02
+        });
+        const roofMat = new THREE.MeshStandardMaterial({
+            color: 0x26292e, // 哑光深灰石板瓦
+            roughness: 0.9,
+            metalness: 0.02,
+            side: THREE.DoubleSide
+        });
+
+        function expandMeshForBuilding(mesh, part) {
+            if (!mesh || mesh.userData.isExpanded) return;
+            mesh.userData.isExpanded = true;
+
+            if (part.type === 'yanlin_pair' && mesh.children && mesh.children.length === 2) {
+                mesh.children[0].position.set(-2.6, 0, 0);
+                mesh.children[1].position.set(2.6, 0, 0);
+            } else if (part.type === 'guazhu_pair' && mesh.children && mesh.children.length === 2) {
+                mesh.children[0].position.set(-part.spanX, 0, 0);
+                mesh.children[1].position.set(part.spanX, 0, 0);
+            } else if (part.type === 'jinlin_group' && mesh.children && mesh.children.length === 4) {
+                const purlinsDef = [
+                    { x: -0.7, y: 0.23 }, { x: 0.7, y: 0.23 },
+                    { x: -1.4, y: -0.25 }, { x: 1.4, y: -0.25 }
+                ];
+                purlinsDef.forEach((p, idx) => {
+                    if (mesh.children[idx]) mesh.children[idx].position.set(p.x, p.y, 0);
+                });
+            } else if (part.type === 'dijiaofang_3d' && mesh.children && mesh.children.length >= 4) {
+                mesh.children[0].position.set(0, 0, 1.2);
+                mesh.children[1].position.set(0, 0, -1.2);
+                mesh.children[2].position.set(-2.2, 0, 0);
+                mesh.children[3].position.set(2.2, 0, 0);
+            } else if (part.type === 'column_pair_z' && mesh.children && mesh.children.length === 2) {
+                mesh.children[0].position.set(0, 0, 1.2);
+                mesh.children[1].position.set(0, 0, -1.2);
+            } else if (part.type === 'chuanfang_xia_3d' && mesh.children && mesh.children.length >= 4) {
+                mesh.children[0].position.set(0, 0, 1.2);
+                mesh.children[1].position.set(0, 0, -1.2);
+                mesh.children[2].position.set(-2.2, 0, 0);
+                mesh.children[3].position.set(2.2, 0, 0);
+            } else if ((part.type === 'center_pillars_3d' || part.type === 'chuanfang_double_z' || part.type === 'tiaofang_pair_z') && mesh.children && mesh.children.length === 2) {
+                mesh.children[0].position.set(0, 0, 1.2);
+                mesh.children[1].position.set(0, 0, -1.2);
+            } else if (part.type === 'guazhu_group_3d' && mesh.children && mesh.children.length === 4) {
+                mesh.children[0].position.set(-part.spanX, 0, 1.2);
+                mesh.children[1].position.set(part.spanX, 0, 1.2);
+                mesh.children[2].position.set(-part.spanX, 0, -1.2);
+                mesh.children[3].position.set(part.spanX, 0, -1.2);
+            } else if (part.type === 'yanlin_3d' && mesh.children && mesh.children.length === 2) {
+                mesh.children[0].position.set(-2.6, 0, 0);
+                mesh.children[1].position.set(2.6, 0, 0);
+            } else if (part.type === 'jinlin_3d' && mesh.children && mesh.children.length === 4) {
+                const purlinsDef = [
+                    { x: -1.4, y: -0.24 }, { x: 1.4, y: -0.24 },
+                    { x: -0.7, y: 0.24 }, { x: 0.7, y: 0.24 }
+                ];
+                purlinsDef.forEach((p, idx) => {
+                    if (mesh.children[idx]) mesh.children[idx].position.set(p.x, p.y, 0);
+                });
+            }
+        }
+
+        function createPartMesh(part) {
+            let mesh;
+            if (part.type === 'yellow_chuan') {
+                const geo = new THREE.BoxGeometry(part.w, part.h, part.d);
+                mesh = new THREE.Mesh(geo, yellowChuanMat);
+            } else if (part.type === 'guazhu_pair') {
+                mesh = new THREE.Group();
+                const geo = new THREE.BoxGeometry(part.w, part.h, part.d);
+                // 候选区并列陈列（宽仅0.25m），拖拽就位时展开为跨度
+                const mLeft = new THREE.Mesh(geo, colMat);
+                mLeft.position.set(-0.12, 0, 0);
+                mesh.add(mLeft);
+                const mRight = new THREE.Mesh(geo, colMat);
+                mRight.position.set(0.12, 0, 0);
+                mesh.add(mRight);
+            } else if (part.type === 'yanlin_pair') {
+                mesh = new THREE.Group();
+                // 候选区两根并列成组（宽仅0.25m），绝不横跨5.2米穿模碰撞
+                const mLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 20), purlinMat);
+                mLeft.rotation.x = Math.PI / 2;
+                mLeft.position.set(-0.12, 0, 0);
+                mesh.add(mLeft);
+                const mRight = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 20), purlinMat);
+                mRight.rotation.x = Math.PI / 2;
+                mRight.position.set(0.12, 0, 0);
+                mesh.add(mRight);
+            } else if (part.type === 'jinlin_group') {
+                mesh = new THREE.Group();
+                // 候选区四根紧凑成组
+                [-0.24, -0.08, 0.08, 0.24].forEach(x => {
+                    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 20), purlinMat);
+                    m.rotation.x = Math.PI / 2;
+                    m.position.set(x, 0, 0);
+                    mesh.add(m);
+                });
+                        } else if (part.type === 'single_beam_x') {
+                const geo = new THREE.BoxGeometry(part.w, part.h, part.d);
+                mesh = new THREE.Mesh(geo, yellowChuanMat);
+            } else if (part.type === 'dijiaofang_3d') {
+                mesh = new THREE.Group();
+                const fMat = beamMat;
+                const mFront = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.08, 0.15), fMat);
+                mFront.position.set(0, 0, 0.12);
+                mesh.add(mFront);
+                const mBack = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.08, 0.15), fMat);
+                mBack.position.set(0, 0, -0.12);
+                mesh.add(mBack);
+                const mLeft = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 2.4), fMat);
+                mLeft.position.set(-2.2, 0, 0);
+                mesh.add(mLeft);
+                const mRight = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 2.4), fMat);
+                mRight.position.set(2.2, 0, 0);
+                mesh.add(mRight);
+            } else if (part.type === 'column_pair_z') {
+                mesh = new THREE.Group();
+                const geo = new THREE.CylinderGeometry(part.r, part.r, part.h, 24);
+                const mFront = new THREE.Mesh(geo, colMat);
+                mFront.position.set(0, 0, 0.15);
+                mesh.add(mFront);
+                const mBack = new THREE.Mesh(geo, colMat);
+                mBack.position.set(0, 0, -0.15);
+                mesh.add(mBack);
+            } else if (part.type === 'chuanfang_xia_3d') {
+                mesh = new THREE.Group();
+                const mFront = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.16, 0.1), yellowChuanMat);
+                mFront.position.set(0, 0, 0.12);
+                mesh.add(mFront);
+                const mBack = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.16, 0.1), yellowChuanMat);
+                mBack.position.set(0, 0, -0.12);
+                mesh.add(mBack);
+                const mLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 2.4), yellowChuanMat);
+                mLeft.position.set(-2.2, 0, 0);
+                mesh.add(mLeft);
+                const mRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 2.4), yellowChuanMat);
+                mRight.position.set(2.2, 0, 0);
+                mesh.add(mRight);
+            } else if (part.type === 'center_pillars_3d') {
+                mesh = new THREE.Group();
+                const geo = new THREE.CylinderGeometry(part.r, part.r, part.h, 24);
+                const mFront = new THREE.Mesh(geo, colMat);
+                mFront.position.set(0, 0, 0.15);
+                mesh.add(mFront);
+                const mBack = new THREE.Mesh(geo, colMat);
+                mBack.position.set(0, 0, -0.15);
+                mesh.add(mBack);
+            } else if (part.type === 'tiaofang_pair_z') {
+                mesh = new THREE.Group();
+                const geo = new THREE.BoxGeometry(part.w, part.h, part.d);
+                const mFront = new THREE.Mesh(geo, yellowChuanMat);
+                mFront.position.set(0, 0, 0.15);
+                mesh.add(mFront);
+                const mBack = new THREE.Mesh(geo, yellowChuanMat);
+                mBack.position.set(0, 0, -0.15);
+                mesh.add(mBack);
+            } else if (part.type === 'guazhu_group_3d') {
+                mesh = new THREE.Group();
+                const geo = new THREE.BoxGeometry(part.w, part.h, part.d);
+                [
+                    { x: -0.12, z: 0.12 }, { x: 0.12, z: 0.12 },
+                    { x: -0.12, z: -0.12 }, { x: 0.12, z: -0.12 }
+                ].forEach(p => {
+                    const m = new THREE.Mesh(geo, colMat);
+                    m.position.set(p.x, 0, p.z);
+                    mesh.add(m);
+                });
+            } else if (part.type === 'chuanfang_double_z') {
+                mesh = new THREE.Group();
+                const geo = new THREE.BoxGeometry(part.w, part.h, part.d);
+                const mFront = new THREE.Mesh(geo, yellowChuanMat);
+                mFront.position.set(0, 0, 0.12);
+                mesh.add(mFront);
+                const mBack = new THREE.Mesh(geo, yellowChuanMat);
+                mBack.position.set(0, 0, -0.12);
+                mesh.add(mBack);
+            } else if (part.type === 'yanlin_3d') {
+                mesh = new THREE.Group();
+                const geo = new THREE.CylinderGeometry(0.085, 0.085, 3.2, 20);
+                const mLeft = new THREE.Mesh(geo, purlinMat);
+                mLeft.rotation.x = Math.PI / 2;
+                mLeft.position.set(-0.15, 0, 0);
+                mesh.add(mLeft);
+                const mRight = new THREE.Mesh(geo, purlinMat);
+                mRight.rotation.x = Math.PI / 2;
+                mRight.position.set(0.15, 0, 0);
+                mesh.add(mRight);
+            } else if (part.type === 'jinlin_3d') {
+                mesh = new THREE.Group();
+                [-0.3, -0.1, 0.1, 0.3].forEach(x => {
+                    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.2, 20), purlinMat);
+                    m.rotation.x = Math.PI / 2;
+                    m.position.set(x, 0, 0);
+                    mesh.add(m);
+                });
+                        } else if (part.type === 'jiling_3d') {
+                mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 3.2, 20), purlinMat);
+                mesh.rotation.x = Math.PI / 2;
+            } else if (part.type === 'cylinder') {
+                const geo = new THREE.CylinderGeometry(part.r, part.r, part.h, 24);
+                mesh = new THREE.Mesh(geo, colMat);
+            } else if (part.type === 'purlin') {
+                const geo = new THREE.CylinderGeometry(part.r, part.r, part.len, 24);
+                mesh = new THREE.Mesh(geo, purlinMat);
+                mesh.rotation.x = Math.PI / 2;
+            } else if (part.type === 'gabled_3d') {
+                mesh = createGabledRoof3DMesh(part.w, part.h, part.d);
+            } else {
+                const geo = new THREE.BoxGeometry(part.w, part.h, part.d);
+                mesh = new THREE.Mesh(geo, yellowChuanMat);
+            }
+
+            // 深度克隆独立材质，彻底避免各柱子、枋材之间共享材质导致的高光联动串扰
+            mesh.traverse(child => {
+                if (child.isMesh && child.material) {
+                    child.material = child.material.clone();
+                }
+            });
+
+            return mesh;
+        }
+
+        function createGabledRoof3DMesh(w, h, d) {
+            const roofGroup = new THREE.Group();
+            const slopeLen = Math.hypot(h, w / 2);
+            const slopeAngle = Math.atan2(h, w / 2);
+
+            const leftSlopeGeo = new THREE.BoxGeometry(slopeLen, 0.06, d);
+            const leftSlope = new THREE.Mesh(leftSlopeGeo, roofMat);
+            leftSlope.position.set(-w / 4, h * 0.45, 0);
+            leftSlope.rotation.z = slopeAngle;
+            leftSlope.castShadow = true;
+            leftSlope.receiveShadow = true;
+            roofGroup.add(leftSlope);
+
+            const rightSlopeGeo = new THREE.BoxGeometry(slopeLen, 0.06, d);
+            const rightSlope = new THREE.Mesh(rightSlopeGeo, roofMat);
+            rightSlope.position.set(w / 4, h * 0.45, 0);
+            rightSlope.rotation.z = -slopeAngle;
+            rightSlope.castShadow = true;
+            rightSlope.receiveShadow = true;
+            roofGroup.add(rightSlope);
+
+            const ridgeGeo = new THREE.BoxGeometry(0.2, 0.12, d + 0.1);
+            const ridge = new THREE.Mesh(ridgeGeo, purlinMat);
+            ridge.position.set(0, h * 0.98, 0);
+            ridge.castShadow = true;
+            ridge.receiveShadow = true;
+            roofGroup.add(ridge);
+
+            return roofGroup;
+        }
+
+        function createGabledRoof3DZone(w, h, d) {
+            const roofGroup = new THREE.Group();
+            const roofWireMat = new THREE.MeshBasicMaterial({
+                color: 0x5c4d38,
+                transparent: true,
+                opacity: 0.06
+            });
+
+            const slopeLen = Math.hypot(h, w / 2);
+            const slopeAngle = Math.atan2(h, w / 2);
+
+            const leftSlopeGeo = new THREE.BoxGeometry(slopeLen * 1.05, 0.1, d * 1.02);
+            const leftSlope = new THREE.Mesh(leftSlopeGeo, roofWireMat);
+            leftSlope.position.set(-w / 4, h * 0.45, 0);
+            leftSlope.rotation.z = slopeAngle;
+            roofGroup.add(leftSlope);
+            const lineLeft = new THREE.LineSegments(new THREE.EdgesGeometry(leftSlopeGeo), new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+            lineLeft.position.set(-w / 4, h * 0.45, 0);
+            lineLeft.rotation.z = slopeAngle;
+            roofGroup.add(lineLeft);
+
+            const rightSlopeGeo = new THREE.BoxGeometry(slopeLen * 1.05, 0.1, d * 1.02);
+            const rightSlope = new THREE.Mesh(rightSlopeGeo, roofWireMat);
+            rightSlope.position.set(w / 4, h * 0.45, 0);
+            rightSlope.rotation.z = -slopeAngle;
+            roofGroup.add(rightSlope);
+            const lineRight = new THREE.LineSegments(new THREE.EdgesGeometry(rightSlopeGeo), new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+            lineRight.position.set(w / 4, h * 0.45, 0);
+            lineRight.rotation.z = -slopeAngle;
+            roofGroup.add(lineRight);
+
+            return roofGroup;
+        }
+
+        function createTargetZones() {
+            partsData.forEach(part => {
+                const zoneGroup = new THREE.Group();
+                zoneGroup.position.set(part.x, part.y, part.z);
+
+                let zone;
+
+                if (part.type === 'yellow_chuan') {
+                    const zoneW = part.w * 1.06;
+                    const zoneH = part.h * 1.6;
+                    const zoneD = part.d * 1.6;
+                    const zoneGeo = new THREE.BoxGeometry(zoneW, zoneH, zoneD);
+                    const zoneMat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    zone = new THREE.Mesh(zoneGeo, zoneMat);
+                    const edges = new THREE.EdgesGeometry(zoneGeo);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    zoneGroup.add(line);
+                } else if (part.type === 'guazhu_pair') {
+                    zone = new THREE.Group();
+                    const zoneW = part.w * 1.5;
+                    const zoneH = part.h * 1.2;
+                    const zoneD = part.d * 1.5;
+                    const geo = new THREE.BoxGeometry(zoneW, zoneH, zoneD);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const m1 = new THREE.Mesh(geo, mat); m1.position.set(-part.spanX, 0, 0);
+                    const m2 = new THREE.Mesh(geo, mat); m2.position.set(part.spanX, 0, 0);
+                    zone.add(m1); zone.add(m2);
+                    const edges = new THREE.EdgesGeometry(geo);
+                    const line1 = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    line1.position.set(-part.spanX, 0, 0);
+                    const line2 = line1.clone();
+                    line2.position.set(part.spanX, 0, 0);
+                    zoneGroup.add(line1); zoneGroup.add(line2);
+                } else if (part.type === 'yanlin_pair') {
+                    zone = new THREE.Group();
+                    const geo = new THREE.CylinderGeometry(0.08 * 1.5, 0.08 * 1.5, 0.8 * 1.05, 12);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const m1 = new THREE.Mesh(geo, mat); m1.rotation.x = Math.PI / 2; m1.position.set(-2.6, 0, 0);
+                    const m2 = new THREE.Mesh(geo, mat); m2.rotation.x = Math.PI / 2; m2.position.set(2.6, 0, 0);
+                    zone.add(m1); zone.add(m2);
+                    const edges = new THREE.EdgesGeometry(geo);
+                    const line1 = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    line1.rotation.x = Math.PI / 2; line1.position.set(-2.6, 0, 0);
+                    const line2 = line1.clone();
+                    line2.position.set(2.6, 0, 0);
+                    zoneGroup.add(line1); zoneGroup.add(line2);
+                } else if (part.type === 'jinlin_group') {
+                    zone = new THREE.Group();
+                    const purlinsDef = [
+                        { x: -0.7, y: 0.23, len: 0.8, r: 0.08 },
+                        { x: 0.7, y: 0.23, len: 0.8, r: 0.08 },
+                        { x: -1.4, y: -0.25, len: 0.8, r: 0.08 },
+                        { x: 1.4, y: -0.25, len: 0.8, r: 0.08 }
+                    ];
+                    purlinsDef.forEach(p => {
+                        const geo = new THREE.CylinderGeometry(p.r * 1.5, p.r * 1.5, p.len * 1.05, 12);
+                        const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                        const m = new THREE.Mesh(geo, mat);
+                        m.rotation.x = Math.PI / 2;
+                        m.position.set(p.x, p.y, 0);
+                        zone.add(m);
+                        const line = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                        line.rotation.x = Math.PI / 2;
+                        line.position.set(p.x, p.y, 0);
+                        zoneGroup.add(line);
+                    });
+                } else if (part.type === 'dijiaofang_3d') {
+                    zone = new THREE.Group();
+                    const bMat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const mFront = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.12, 0.2), bMat); mFront.position.set(0, 0, 1.2); zone.add(mFront);
+                    const mBack = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.12, 0.2), bMat); mBack.position.set(0, 0, -1.2); zone.add(mBack);
+                    const mLeft = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 2.4), bMat); mLeft.position.set(-2.2, 0, 0); zone.add(mLeft);
+                    const mRight = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 2.4), bMat); mRight.position.set(2.2, 0, 0); zone.add(mRight);
+                } else if (part.type === 'column_pair_z') {
+                    zone = new THREE.Group();
+                    const geo = new THREE.CylinderGeometry(part.r * 1.5, part.r * 1.5, part.h * 1.05, 12);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const m1 = new THREE.Mesh(geo, mat); m1.position.set(0, 0, 1.2);
+                    const m2 = new THREE.Mesh(geo, mat); m2.position.set(0, 0, -1.2);
+                    zone.add(m1); zone.add(m2);
+                    const line1 = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    line1.position.set(0, 0, 1.2);
+                    const line2 = line1.clone();
+                    line2.position.set(0, 0, -1.2);
+                    zoneGroup.add(line1); zoneGroup.add(line2);
+                } else if (part.type === 'chuanfang_xia_3d') {
+                    zone = new THREE.Group();
+                    const bMat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const mFront = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.22, 0.16), bMat); mFront.position.set(0, 0, 1.2); zone.add(mFront);
+                    const mBack = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.22, 0.16), bMat); mBack.position.set(0, 0, -1.2); zone.add(mBack);
+                    const mLeft = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 2.4), bMat); mLeft.position.set(-2.2, 0, 0); zone.add(mLeft);
+                    const mRight = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 2.4), bMat); mRight.position.set(2.2, 0, 0); zone.add(mRight);
+                } else if (part.type === 'center_pillars_3d') {
+                    zone = new THREE.Group();
+                    const geo = new THREE.CylinderGeometry(part.r * 1.5, part.r * 1.5, part.h * 1.05, 12);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const m1 = new THREE.Mesh(geo, mat); m1.position.set(0, 0, 1.2);
+                    const m2 = new THREE.Mesh(geo, mat); m2.position.set(0, 0, -1.2);
+                    zone.add(m1); zone.add(m2);
+                    const line1 = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    line1.position.set(0, 0, 1.2);
+                    const line2 = line1.clone();
+                    line2.position.set(0, 0, -1.2);
+                    zoneGroup.add(line1); zoneGroup.add(line2);
+                } else if (part.type === 'tiaofang_pair_z' || part.type === 'chuanfang_double_z') {
+                    zone = new THREE.Group();
+                    const bMat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const m1 = new THREE.Mesh(new THREE.BoxGeometry(part.w * 1.1, part.h * 1.5, part.d * 1.5), bMat); m1.position.set(0, 0, 1.2); zone.add(m1);
+                    const m2 = new THREE.Mesh(new THREE.BoxGeometry(part.w * 1.1, part.h * 1.5, part.d * 1.5), bMat); m2.position.set(0, 0, -1.2); zone.add(m2);
+                } else if (part.type === 'guazhu_group_3d') {
+                    zone = new THREE.Group();
+                    const bMat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    [{ x: -part.spanX, z: 1.2 }, { x: part.spanX, z: 1.2 }, { x: -part.spanX, z: -1.2 }, { x: part.spanX, z: -1.2 }].forEach(p => {
+                        const m = new THREE.Mesh(new THREE.BoxGeometry(part.w * 1.5, part.h * 1.2, part.d * 1.5), bMat);
+                        m.position.set(p.x, 0, p.z);
+                        zone.add(m);
+                    });
+                } else if (part.type === 'yanlin_3d') {
+                    zone = new THREE.Group();
+                    const geo = new THREE.CylinderGeometry(0.085 * 1.5, 0.085 * 1.5, 3.2 * 1.02, 12);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    const m1 = new THREE.Mesh(geo, mat); m1.rotation.x = Math.PI / 2; m1.position.set(-2.6, 0, 0); zone.add(m1);
+                    const m2 = new THREE.Mesh(geo, mat); m2.rotation.x = Math.PI / 2; m2.position.set(2.6, 0, 0); zone.add(m2);
+                } else if (part.type === 'jinlin_3d') {
+                    zone = new THREE.Group();
+                    [-1.4, -0.7, 0.7, 1.4].forEach(x => {
+                        const geo = new THREE.CylinderGeometry(0.08 * 1.5, 0.08 * 1.5, 3.2 * 1.02, 12);
+                        const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                        const m = new THREE.Mesh(geo, mat);
+                        m.rotation.x = Math.PI / 2;
+                        m.position.set(x, 0, 0);
+                        zone.add(m);
+                    });
+                } else if (part.type === 'jiling_3d') {
+                    const geo = new THREE.CylinderGeometry(0.095 * 1.5, 0.095 * 1.5, 3.2 * 1.02, 12);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x5c4d38, transparent: true, opacity: 0.06 });
+                    zone = new THREE.Mesh(geo, mat);
+                    zone.rotation.x = Math.PI / 2;
+                } else if (part.type === 'cylinder') {
+                    const zoneGeo = new THREE.CylinderGeometry(part.r * 1.5, part.r * 1.5, part.h * 1.05, 12);
+                    const zoneMat = new THREE.MeshBasicMaterial({
+                        color: 0x5c4d38,
+                        transparent: true,
+                        opacity: 0.06
+                    });
+                    zone = new THREE.Mesh(zoneGeo, zoneMat);
+                    const edges = new THREE.EdgesGeometry(zoneGeo);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    zoneGroup.add(line);
+                } else if (part.type === 'purlin') {
+                    const zoneGeo = new THREE.CylinderGeometry(part.r * 1.6, part.r * 1.6, part.len * 1.02, 12);
+                    const zoneMat = new THREE.MeshBasicMaterial({
+                        color: 0x5c4d38,
+                        transparent: true,
+                        opacity: 0.06
+                    });
+                    zone = new THREE.Mesh(zoneGeo, zoneMat);
+                    zone.rotation.x = Math.PI / 2;
+                    const edges = new THREE.EdgesGeometry(zoneGeo);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    zone.add(line);
+                } else if (part.type === 'gabled_3d') {
+                    zone = createGabledRoof3DZone(part.w, part.h, part.d);
+                } else {
+                    const zoneW = part.w * 1.06;
+                    const zoneH = part.h * 1.6;
+                    const zoneD = part.d * 1.6;
+                    const zoneGeo = new THREE.BoxGeometry(zoneW, zoneH, zoneD);
+                    const zoneMat = new THREE.MeshBasicMaterial({
+                        color: 0x5c4d38,
+                        transparent: true,
+                        opacity: 0.06
+                    });
+                    zone = new THREE.Mesh(zoneGeo, zoneMat);
+                    const edges = new THREE.EdgesGeometry(zoneGeo);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x6e5d45, opacity: 0.38, transparent: true }));
+                    zoneGroup.add(line);
+                }
+
+                zoneGroup.add(zone);
+                zoneGroup.traverse(child => {
+                    if (child.material) {
+                        child.material = child.material.clone();
+                    }
+                });
+                zoneGroup.userData = { partId: part.id, isZone: true, zoneMesh: zone };
+                scene.add(zoneGroup);
+                targetZones.push(zoneGroup);
+            });
+        }
+
+        const positionsLvl1 = [
+            { x: -5.3, y: 0.35, z: -0.2 }, // [0] 地脚枋（长5.2m，左侧底部）
+            { x: -4.4, y: 1.35, z: 0 },    // [1] 左柱（立木，高2.5m，左侧挺立）
+            { x: -3.0, y: 1.35, z: 0 },    // [2] 右柱（立木，高2.5m，左侧挺立）
+            { x: -5.3, y: 3.85, z: -0.2 }, // [3] 穿枋（下穿，长5.0m，左侧高位）
+            { x: -3.7, y: 2.05, z: 0 },    // [4] 中柱（立木，高3.9m，居中挺立）
+            { x: 3.4,  y: 1.85, z: 0 },    // [5] 挑枋（左）
+            { x: 4.6,  y: 1.85, z: 0 },    // [6] 挑枋（右）
+            { x: 3.4,  y: 2.45, z: 0 },    // [7] 中穿瓜柱
+            { x: 4.4,  y: 0.60, z: 0 },    // [8] 穿枋（中穿，长3.4m）
+            { x: 4.6,  y: 2.45, z: 0 },    // [9] 上穿瓜柱
+            { x: 4.0,  y: 1.25, z: 0 },    // [10] 穿枋（上穿，长2.0m）
+            { x: 4.0,  y: 3.05, z: 0 },    // [11] 檐檩
+            { x: 4.0,  y: 3.65, z: 0 },    // [12] 金檩
+            { x: 4.0,  y: 4.25, z: 0 }     // [13] 脊檩
+        ];
+
+        
+        // 第二关显眼醒目的构件陈列台（解决放的位置不好找问题）
+        function createStagingDeck() {
+            if (stagingDeckGroup) {
+                scene.remove(stagingDeckGroup);
+            }
+            stagingDeckGroup = new THREE.Group();
+
+            // 宽大古朴木作工匠台底座（置于中央偏右区域 X=5.2，承托第二关14件立体构件）
+            const deckGeo = new THREE.BoxGeometry(3.6, 0.08, 6.6);
+            const deckMat = new THREE.MeshStandardMaterial({
+                color: 0x14181f,
+                roughness: 0.8,
+                metalness: 0.15
+            });
+            const deckMesh = new THREE.Mesh(deckGeo, deckMat);
+            deckMesh.position.set(5.2, 0.04, 0);
+            deckMesh.receiveShadow = true;
+            stagingDeckGroup.add(deckMesh);
+
+            // 工匠台四周嵌金饰条边框
+            const edgeGeo = new THREE.EdgesGeometry(deckGeo);
+            const edgeLine = new THREE.LineSegments(
+                edgeGeo,
+                new THREE.LineBasicMaterial({ color: 0xc4a574, opacity: 0.65, transparent: true })
+            );
+            edgeLine.position.set(5.2, 0.04, 0);
+            stagingDeckGroup.add(edgeLine);
+
+            // 台面规整网格
+            const gridHelper = new THREE.GridHelper(6.0, 8, 0xc4a574, 0x222a36);
+            gridHelper.position.set(5.2, 0.082, 0);
+            stagingDeckGroup.add(gridHelper);
+
+            scene.add(stagingDeckGroup);
+        }
+
+        function createDraggableParts() {
+            draggableObjects = [];
+            partsData.forEach((part, index) => {
+                const mesh = createPartMesh(part);
+
+                let pos;
+                if (currentLevel === 2 && part.stagePos) {
+                    pos = part.stagePos;
+                } else if (part.initPos) {
+                    pos = part.initPos;
+                } else {
+                    pos = positionsLvl1[index % positionsLvl1.length];
+                }
+
+                mesh.position.set(pos.x, pos.y, pos.z);
+                mesh.visible = true;
+
+                mesh.userData = {
+                    partId: part.id,
+                    partData: part,
+                    isDraggable: true,
+                    originalPos: mesh.position.clone()
+                };
+
+                scene.add(mesh);
+                draggableObjects.push(mesh);
+            });
+        }
+
+        let isInitialized = false;
+
+        function init() {
+            try {
+                if (localStorage.getItem('chuandou_level1_completed') === 'true') {
+                    level1Completed = true;
+                }
+            } catch(e) {}
+            updateLevelSelectorUI();
+
+            if (isInitialized) return;
+            isInitialized = true;
+
+            initThreeJS();
+            if (currentLevel === 2) createStagingDeck();
+            createTargetZones();
+            createDraggableParts();
+            createUI();
+            setupEvents();
+
+            if (config.showHelpOnStart) {
+                setTimeout(() => {
+                    const helpModal = document.getElementById('helpModal');
+                    if (helpModal) helpModal.classList.add('show');
+                }, 500);
+            }
+            setTimeout(() => {
+                showCraftsmanWelcome();
+            }, 1000);
+
+            gameStartTime = Date.now();
+            animate();
+        }
+
+        function initThreeJS() {
+            const container = document.querySelector('#construction-mode #scene') || document.getElementById('scene');
+            if (!container) return;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0b0e13);
+            scene.fog = new THREE.Fog(0x0b0e13, 12, 45);
+
+            const width = (container.clientWidth > 0) ? container.clientWidth : (window.innerWidth || 800);
+            const height = (container.clientHeight > 0) ? container.clientHeight : (window.innerHeight || 600);
+
+            camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+            camera.position.set(0, 2.3, 8.5);
+            camera.lookAt(0, 1.8, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+            scene.add(ambient);
+
+            const sun = new THREE.DirectionalLight(0xffeedd, 1.0);
+            sun.position.set(5, 10, 8);
+            sun.castShadow = true;
+            sun.shadow.mapSize.width = 2048;
+            sun.shadow.mapSize.height = 2048;
+            scene.add(sun);
+
+            const fill = new THREE.DirectionalLight(0x6688aa, 0.35);
+            fill.position.set(-5, 8, -5);
+            scene.add(fill);
+
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(100, 100),
+                new THREE.MeshStandardMaterial({ color: 0x0e1117, roughness: 0.95 })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const grid = new THREE.GridHelper(60, 120, 0x2d2417, 0x13171e);
+            scene.add(grid);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+        }
+
+        function createUI() {
+            const container = document.getElementById('partsContainer');
+            container.innerHTML = '';
+            partsData.forEach(part => {
+                const div = document.createElement('div');
+                div.className = 'part-item';
+                div.id = 'ui-' + part.id;
+                div.textContent = part.name;
+                div.draggable = false;
+                
+                // 点击左侧卡片高亮3D构件
+                div.addEventListener('click', () => {
+                    const obj = draggableObjects.find(o => o.userData.partId === part.id);
+                    if (obj) {
+                        // 移除侧边栏其他选中项，当前项高亮
+                        container.querySelectorAll('.part-item').forEach(item => item.classList.remove('selected'));
+                        div.classList.add('selected');
+
+                        // 重置其他构件发光
+                        draggableObjects.forEach(o => {
+                            o.traverse(c => {
+                                if (c.isMesh && c.material && c.material.emissive) {
+                                    c.material.emissive.setHex(0x000000);
+                                }
+                            });
+                        });
+                        targetZones.forEach(z => {
+                            z.traverse(c => {
+                                if (c.material) {
+                                    if (c.isMesh) {
+                                        c.material.color.setHex(0x5c4d38);
+                                        c.material.opacity = 0.06;
+                                    } else if (c.isLineSegments) {
+                                        c.material.color.setHex(0x5c4d38);
+                                    }
+                                }
+                            });
+                        });
+
+                        // 当前构件单独泛起清新草绿高光
+                        obj.traverse(c => {
+                            if (c.isMesh && c.material && c.material.emissive) {
+                                c.material.emissive.setHex(0x2eb82e);
+                            }
+                        });
+
+                        // 对应目标虚线框同步高亮草绿色
+                        const currentZone = targetZones.find(z => z.userData.partId === part.id);
+                        if (currentZone && !placedParts.includes(part.id)) {
+                            currentZone.traverse(c => {
+                                if (c.material) {
+                                    if (c.isMesh) {
+                                        c.material.color.setHex(0x52c41a);
+                                        c.material.opacity = 0.45;
+                                    } else if (c.isLineSegments) {
+                                        c.material.color.setHex(0x52c41a);
+                                    }
+                                }
+                            });
+                        }
+
+                        const indicator = document.getElementById('dragIndicator');
+                        indicator.style.display = 'block';
+                        indicator.textContent = '已选中【' + part.name + '】可拖曳安装';
+                        
+                        if (window.partHighlightTimer) clearTimeout(window.partHighlightTimer);
+                        window.partHighlightTimer = setTimeout(() => {
+                            indicator.style.display = 'none';
+                            div.classList.remove('selected');
+                            obj.traverse(c => {
+                                if (c.isMesh && c.material && c.material.emissive) {
+                                    c.material.emissive.setHex(0x000000);
+                                }
+                            });
+                            if (currentZone && !placedParts.includes(part.id)) {
+                                currentZone.traverse(c => {
+                                    if (c.material) {
+                                        if (c.isMesh) {
+                                            c.material.color.setHex(0x5c4d38);
+                                            c.material.opacity = 0.06;
+                                        } else if (c.isLineSegments) {
+                                            c.material.color.setHex(0x5c4d38);
+                                        }
+                                    }
+                                });
+                            }
+                        }, 3500);
+                    }
+                });
+
+                container.appendChild(div);
+            });
+
+            document.getElementById('totalNum').textContent = partsData.length;
+            document.getElementById('progressNum').textContent = '0';
+            document.getElementById('progressFill').style.width = '0%';
+        }
+
+        function setupEvents() {
+            const canvas = renderer.domElement;
+            const sceneContainer = document.querySelector('#construction-mode #scene') || document.getElementById('scene');
+            const gameContainer = document.getElementById('game');
+
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+            canvas.addEventListener('touchend', onTouchEnd);
+
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+            if (sceneContainer) {
+                sceneContainer.addEventListener('wheel', onWheel, { passive: false });
+            }
+            if (gameContainer) {
+                gameContainer.addEventListener('wheel', (e) => {
+                    if (e.target && e.target.closest && e.target.closest('#partsContainer')) return;
+                    onWheel(e);
+                }, { passive: false });
+            }
+
+            window.addEventListener('resize', onResize);
+            document.getElementById('restartBtn').addEventListener('click', restartCurrentLevel);
+        }
+
+        // 3D 视角切换器
+        function setCameraView(preset) {
+            if (rotationAnimId) {
+                cancelAnimationFrame(rotationAnimId);
+                rotationAnimId = null;
+            }
+            if (preset === 'perspective') {
+                camTheta = 0.75;
+                camPhi = Math.PI / 2.7;
+                camRadius = 11.5;
+                camTarget.set(1.0, 1.8, 0);
+            } else if (preset === 'front') {
+                camTheta = 0;
+                camPhi = Math.PI / 2.05;
+                camRadius = 9.5;
+            } else if (preset === 'side') {
+                camTheta = Math.PI / 2;
+                camPhi = Math.PI / 2.1;
+                camRadius = 9.5;
+            } else if (preset === 'top') {
+                camTheta = 0;
+                camPhi = 0.2;
+                camRadius = 11.0;
+            }
+            updateCameraFromOrbit();
+        }
+
+        function updateCameraFromOrbit() {
+            camPhi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, camPhi));
+            camera.position.x = camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(camTheta);
+            camera.position.y = camTarget.y + camRadius * Math.cos(camPhi);
+            camera.position.z = camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(camTheta);
+            camera.lookAt(camTarget);
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+
+            if (currentLevel === 1) {
+                // 第一关：单榀平面排架视角平滑推拉（缩放建筑模型）
+                camera.position.z += e.deltaY * 0.006;
+                camera.position.z = Math.max(4.2, Math.min(14.0, camera.position.z));
+                camera.lookAt(0, 1.8, 0);
+            } else {
+                // 第二关：双榀立体空间视角轨道半径平滑缩放
+                camRadius += e.deltaY * 0.008;
+                camRadius = Math.max(4.5, Math.min(18.0, camRadius));
+                updateCameraFromOrbit();
+            }
+        }
+
+        function getMousePos(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            return {
+                x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                y: -((event.clientY - rect.top) / rect.height) * 2 + 1
+            };
+        }
+// AI辅助生成：Kimi-k2.5, 2026-04-05
+        function onMouseDown(event) {
+            // 右键或者中键：用于 3D 旋转视角
+            if (event.button === 2 || event.button === 1) {
+                if (currentLevel === 2) {
+                    isOrbiting = true;
+                    orbitStart.x = event.clientX;
+                    orbitStart.y = event.clientY;
+                }
+                return;
+            }
+
+            const pos = getMousePos(event);
+            mouse.set(pos.x, pos.y);
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(draggableObjects, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj.parent && obj.parent !== scene) {
+                    if (obj.userData.isDraggable) {
+                        break;
+                    }
+                    obj = obj.parent;
+                }
+
+                if (obj.userData.isDraggable && !placedParts.includes(obj.userData.partId)) {
+                    expandMeshForBuilding(obj, obj.userData.partData);
+                    isDragging = true;
+                    draggedObject = obj;
+                    obj.userData.originalPos = obj.position.clone();
+
+                    const partId = obj.userData.partId;
+                    const zone = targetZones.find(z => z.userData.partId === partId);
+
+                    if (currentLevel === 1) {
+                        dragPlane.setFromNormalAndCoplanarPoint(
+                            new THREE.Vector3(0, 0, 1),
+                            obj.position
+                        );
+                    } else {
+                        // 3D 模式下：拖拽平面穿过目标虚线框中心（若未找到则穿过自身），确保光标对准目标时深度完全重合无视差
+                        const camDir = new THREE.Vector3();
+                        camera.getWorldDirection(camDir);
+                        camDir.negate();
+                        const planePt = zone ? zone.position : obj.position;
+                        dragPlane.setFromNormalAndCoplanarPoint(camDir, planePt);
+                    }
+
+                    const intersect = new THREE.Vector3();
+                    raycaster.ray.intersectPlane(dragPlane, intersect);
+                    dragOffset.subVectors(obj.position, intersect);
+                    obj.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            child.material.emissive = new THREE.Color(0x2eb82e);
+                        }
+                    });
+                    if (zone && !placedParts.includes(partId)) {
+                        zone.traverse(c => {
+                            if (c.material) {
+                                if (c.isMesh) {
+                                    c.material.color.setHex(0x52c41a);
+                                    c.material.opacity = 0.35;
+                                } else if (c.isLineSegments) {
+                                    c.material.color.setHex(0x52c41a);
+                                    c.material.opacity = 0.85;
+                                }
+                            }
+                        });
+                    }
+                    document.getElementById('ui-' + obj.userData.partId).classList.add('dragging');
+                    document.getElementById('dragIndicator').style.display = 'block';
+                }
+            } else if (currentLevel === 2) {
+                // 点击空白处，左键也可环绕视角
+                isOrbiting = true;
+                orbitStart.x = event.clientX;
+                orbitStart.y = event.clientY;
+            }
+        }
+
+        function onMouseMove(event) {
+            if (isOrbiting && currentLevel === 2) {
+                const deltaX = event.clientX - orbitStart.x;
+                const deltaY = event.clientY - orbitStart.y;
+                camTheta -= deltaX * 0.006;
+                camPhi -= deltaY * 0.006;
+                orbitStart.x = event.clientX;
+                orbitStart.y = event.clientY;
+                updateCameraFromOrbit();
+                return;
+            }
+
+            if (!isDragging || !draggedObject) return;
+
+            const pos = getMousePos(event);
+            mouse.set(pos.x, pos.y);
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const partId = draggedObject.userData.partId;
+            const zone = targetZones.find(z => z.userData.partId === partId);
+
+            if (currentLevel === 1) {
+                dragPlane.setFromNormalAndCoplanarPoint(
+                    new THREE.Vector3(0, 0, 1),
+                    draggedObject.position.clone()
+                );
+            } else {
+                const camDir = new THREE.Vector3();
+                camera.getWorldDirection(camDir);
+                camDir.negate();
+                const planePt = zone ? zone.position : draggedObject.position;
+                dragPlane.setFromNormalAndCoplanarPoint(camDir, planePt);
+            }
+
+            const intersect = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(dragPlane, intersect)) {
+                let targetPos = intersect.add(dragOffset);
+                
+                if (zone && !isReturningToOriginal) {
+                    const dist3D = targetPos.distanceTo(zone.position);
+                    const snapRadius = config.snapDistance * 1.2;
+
+                    // 极其自然的温和渐变微吸阻尼：随距离平滑提升微吸力（最大仅0.22），绝不产生瞬移突兀感
+                    if (dist3D < snapRadius) {
+                        const pullFactor = Math.pow(1.0 - dist3D / snapRadius, 2) * 0.22;
+                        targetPos.lerp(zone.position, pullFactor);
+                    }
+                }
+
+                draggedObject.position.copy(targetPos);
+                if (currentLevel === 1) {
+                    draggedObject.position.z = THREE.MathUtils.lerp(draggedObject.position.z, 0, 0.3);
+                }
+            }
+
+            const indicator = document.getElementById('dragIndicator');
+            indicator.style.left = (event.clientX + 15) + 'px';
+            indicator.style.top = (event.clientY - 30) + 'px';
+            indicator.textContent = draggedObject.userData.partData.name;
+
+            checkSnap();
+        }
+
+        function onMouseUp(event) {
+            if (isOrbiting) {
+                isOrbiting = false;
+            }
+
+            if (!isDragging || !draggedObject) return;
+
+            const currentObj = draggedObject;
+            isDragging = false; 
+            draggedObject = null;
+            currentObj.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    child.material.emissive = new THREE.Color(0x000000);
+                }
+            });
+            document.getElementById('ui-' + currentObj.userData.partId).classList.remove('dragging');
+            document.getElementById('dragIndicator').style.display = 'none';
+            const result = checkPlacement(currentObj);
+
+            if (result === 'success') {
+                placePart(currentObj);
+            } else if (result === 'order_error') {
+                returnToOriginal(currentObj, () => {});
+            } else {
+                showError(currentObj);
+                returnToOriginal(currentObj, () => {});
+            }
+        }
+
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                onMouseDown({ clientX: touch.clientX, clientY: touch.clientY, button: 0 });
+            }
+        }
+
+        function onTouchMove(event) {
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                onMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        }
+
+        function onTouchEnd(event) {
+            onMouseUp({});
+        }
+
+        function checkSnap() {
+            if (!draggedObject || isReturningToOriginal) return;
+
+            const partId = draggedObject.userData.partId;
+            const zone = targetZones.find(z => z.userData.partId === partId);
+
+            if (zone) {
+                const dist = draggedObject.position.distanceTo(zone.position);
+                const snapThreshold = config.snapDistance * 1.15;
+                let isNear = (dist < snapThreshold);
+
+                if (currentLevel === 2) {
+                    const objScreen = draggedObject.position.clone().project(camera);
+                    const zoneScreen = zone.position.clone().project(camera);
+                    const screenDist = Math.hypot(objScreen.x - zoneScreen.x, objScreen.y - zoneScreen.y);
+                    if (screenDist < 0.14) isNear = true;
+                }
+
+                if (isNear) {
+                    zone.traverse((child) => {
+                        if (child.material) {
+                            if (child.isMesh) {
+                                child.material.opacity = 0.4;
+                                child.material.color.setHex(0x4caf50);
+                            }
+                            if (child.isLineSegments) {
+                                child.material.opacity = 0.9;
+                                child.material.color.setHex(0x4caf50);
+                            }
+                        }
+                    });
+                } else {
+                    zone.traverse((child) => {
+                        if (child.material) {
+                            if (child.isMesh) {
+                                child.material.opacity = 0.06;
+                                child.material.color.setHex(0x5c4d38);
+                            }
+                            if (child.isLineSegments) {
+                                child.material.opacity = 0.65;
+                                child.material.color.setHex(0x5c4d38);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function showCraftsmanWelcome() {
+            const dialog = document.getElementById('craftsmanDialog');
+            dialog.className = 'show guide';
+
+            if (currentLevel === 1) {
+                document.getElementById('craftsmanMessage').textContent =
+                    '小师傅，欢迎来到营造工坊！第一关我们将拼装单榀平面排架。这可是川西穿斗大木作的承重基础！';
+                document.getElementById('craftsmanTip').textContent =
+                    '记住口诀：先下后上，先柱后梁，由根及巅！拖拽左侧构件到金线框中。';
+            } else {
+                document.getElementById('craftsmanMessage').textContent =
+                    '进阶第二关·双榀立体空间营造！右侧木质陈列台已为您备好全部立体构件。先定前后地基，再立四角柱网与双中柱，穿枋纵横锁死，最终覆压大屋顶！';
+                document.getElementById('craftsmanTip').textContent =
+                    '立体提示：构件已整齐摆放在右侧台面，绝不遮挡；靠近金色虚线框即自动磁吸入位！点击左侧列表卡片可高亮构件；鼠标右键可旋转视角。';
+            }
+            setTimeout(() => {
+                dialog.classList.remove('show');
+            }, 6500);
+        }
+
+        function checkPlacement(obj) {
+            if (!obj) return false;
+
+            const partData = obj.userData.partData;
+            expandMeshForBuilding(obj, partData);
+            const zone = targetZones.find(z => z.userData.partId === partData.id);
+
+            if (!zone) return false;
+
+            if (partData.order) {
+                const currentOrder = partData.order;
+                const unplacedPrecursors = partsData.filter(p => p.order < currentOrder && !placedParts.includes(p.id));
+
+                if (unplacedPrecursors.length > 0) {
+                    const minMissingOrder = Math.min(...unplacedPrecursors.map(p => p.order));
+                    showOrderError(partData, currentOrder, minMissingOrder);
+                    return 'order_error';
+                }
+            }
+
+            const dist3D = obj.position.distanceTo(zone.position);
+            const snapThreshold = config.snapDistance * 1.25;
+            let isNearSuccess = (dist3D < snapThreshold);
+
+            if (currentLevel === 2) {
+                const objScreen = obj.position.clone().project(camera);
+                const zoneScreen = zone.position.clone().project(camera);
+                const screenDist = Math.hypot(objScreen.x - zoneScreen.x, objScreen.y - zoneScreen.y);
+                if (screenDist < 0.15) isNearSuccess = true;
+            }
+
+            if (isNearSuccess) {
+                return 'success';
+            } else {
+                return 'position_error';
+            }
+        }
+
+        function showOrderError(partData, currentOrder, expectedOrder) {
+            const orderNamesLvl1 = {
+                1: '地脚枋',
+                2: '左柱 / 中柱 / 右柱',
+                3: '穿枋（下穿）',
+                4: '中穿瓜柱',
+                5: '穿枋（中穿）',
+                6: '上穿瓜柱',
+                7: '穿枋（上穿）',
+                8: '挑枋（左 / 右）',
+                9: '檐檩',
+                10: '金檩',
+                11: '脊檩'
+            };
+
+            const orderNamesLvl2 = {
+                1: '地脚枋',
+                2: '左柱 / 右柱',
+                3: '穿枋（下穿）',
+                4: '中柱',
+                5: '中穿瓜柱',
+                6: '挑枋（左） / 挑枋（右）',
+                7: '穿枋（中穿）',
+                8: '上穿瓜柱',
+                9: '穿枋（上穿）',
+                10: '檐檩',
+                11: '金檩',
+                12: '脊檩'
+            };
+
+            const orderNames = currentLevel === 1 ? orderNamesLvl1 : orderNamesLvl2;
+            const requiredPart = orderNames[expectedOrder] || '前序构件';
+            const currentPart = partData.name;
+            const dialog = document.getElementById('craftsmanDialog');
+            dialog.className = 'show warning';
+
+            let message = `哎呀，${currentPart}的安装顺序不对！`;
+            let tip = `按大木作营造法度，必须先安放【${requiredPart}】！`;
+
+            document.getElementById('craftsmanMessage').textContent = message;
+            document.getElementById('craftsmanTip').textContent = tip;
+            setTimeout(() => {
+                dialog.classList.remove('show');
+            }, 5000);
+        }
+
+        function placePart(obj) {
+            const partData = obj.userData.partData;
+            expandMeshForBuilding(obj, partData);
+            const targetPos = new THREE.Vector3(partData.x, partData.y, partData.z);
+            const startPos = obj.position.clone();
+
+            if (!placedParts.includes(partData.id)) {
+                placedParts.push(partData.id);
+            }
+            const progressNum = placedParts.length;
+            document.getElementById('progressNum').textContent = progressNum;
+            document.getElementById('progressFill').style.width = (progressNum / partsData.length * 100) + '%';
+
+            const duration = 600; 
+            const startTime = Date.now();
+
+            function animatePlace() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 4); 
+
+                obj.position.lerpVectors(startPos, targetPos, eased);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animatePlace);
+                } else {
+                    draggableObjects = draggableObjects.filter(o => o !== obj);
+
+                    document.getElementById('ui-' + partData.id).classList.add('placed');
+
+                    const zone = targetZones.find(z => z.userData.partId === partData.id);
+                    if (zone) zone.visible = false;
+
+                    showBook(partData.success, true);
+
+                    if (placedParts.length >= partsData.length) {
+                        saveGameRecord(); 
+                        setTimeout(() => {
+                            if (currentLevel === 1) {
+                                level1Completed = true;
+                                try { localStorage.setItem('chuandou_level1_completed', 'true'); } catch(e){}
+                                updateLevelSelectorUI();
+                                showLevel1Complete();
+                            } else {
+                                level2Completed = true;
+                                showLevel2Complete();
+                            }
+                        }, 800);
+                    }
+                }
+            }
+
+            animatePlace();
+        }
+
+        function showError(obj) {
+            const partData = obj.userData.partData;
+            expandMeshForBuilding(obj, partData);
+            const partId = partData.id;
+
+            errorCount[partId] = (errorCount[partId] || 0) + 1;
+
+            showBook(partData.error, false);
+        }
+
+        // 第一关通关指引进入第二关
+        function showLevel1Complete() {
+            targetZones.forEach(zone => zone.visible = false);
+            draggableObjects.forEach(obj => scene.remove(obj));
+            draggableObjects = [];
+
+            // 弹窗指引
+            const completeModal = document.getElementById('complete');
+            document.getElementById('completeTitle').textContent = '🎉 第一关·单榀排架大功告成！';
+            document.getElementById('completeDesc').innerHTML = 
+                '小师傅好手艺！你已成功拼装完川西穿斗单榀排架（平面骨架）。<br>' +
+                '但在传统真实建筑中，单榀排架绝非孤立，必须由前后双榀甚至数榀排架，' +
+                '通过纵向金枋、中脊檩条与大屋顶立体贯穿，方成进深广厦！<br><br>' +
+                '<strong style="color: #ffd700;">准备好挑战三维立体双榀空间营造了吗？</strong>';
+
+            const completeActions = document.getElementById('completeButtons');
+            completeActions.innerHTML = `
+                <button class="btn btn-primary-gold" onclick="enterLevel2()">进阶第二关：立体双榀营造 ➔</button>
+                <button class="btn btn-secondary" onclick="restartCurrentLevel()">重玩第一关</button>
+            `;
+            completeModal.classList.add('show');
+
+            // 匠人语音指导
+            const dialog = document.getElementById('craftsmanDialog');
+            dialog.className = 'show guide';
+            document.getElementById('craftsmanMessage').textContent =
+                '太棒了！单榀排架已成。真正的传统建筑讲究“纵横交织，空间成立”。快随老朽进入第二关，挑战立体双榀空间！';
+            document.getElementById('craftsmanTip').textContent =
+                '点击弹窗中的【进阶第二关】或顶部关卡栏进入三维立体模式！';
+        }
+
+        // 第二关进入函数
+        function enterLevel2() {
+            document.getElementById('complete').classList.remove('show');
+            switchToLevel(2);
+        }
+
+        // 第二关通关
+        function showLevel2Complete() {
+            targetZones.forEach(zone => zone.visible = false);
+            draggableObjects.forEach(obj => scene.remove(obj));
+            draggableObjects = [];
+
+            const completeModal = document.getElementById('complete');
+            document.getElementById('completeTitle').textContent = '🏆 大宗师！川西穿斗立体大木作圆满落成！';
+            document.getElementById('completeDesc').innerHTML = 
+                '天衣无缝，四水归堂！你已完整领悟川西穿斗式古建空间精髓：<br>' +
+                '立足地脚，四柱拔地，穿枋穿透层层锁紧，三维五柱七架双榀空间稳固矗立，通长金檩与脊檩贯通中天，' +
+                '抗震消能，立千年而不倒！你已成为真正的穿斗营造大宗师！';
+
+            const completeActions = document.getElementById('completeButtons');
+            completeActions.innerHTML = `
+                <button class="btn btn-primary-gold" onclick="switchToLevel(1)">返回第一关温习</button>
+                <button class="btn btn-secondary" onclick="restartCurrentLevel()">再次挑战第二关</button>
+            `;
+            completeModal.classList.add('show');
+
+            // 开始 3D 环绕自转观赏立体杰作
+            startRotation();
+        }
+
+        
+        function showLockedLevelNotice() {
+            const dialog = document.getElementById('craftsmanDialog');
+            if (dialog) {
+                dialog.className = 'show warning';
+                document.getElementById('craftsmanMessage').textContent = '第二关尚未解锁！';
+                document.getElementById('craftsmanTip').textContent = '按大木作营造法度，须先通过第一关【单榀排架】，方可解锁第二关【双榀空间营造】！';
+                setTimeout(() => {
+                    dialog.classList.remove('show');
+                }, 4000);
+            }
+        }
+
+        function updateLevelSelectorUI() {
+            const tab2 = document.getElementById('levelBtn2');
+            if (!tab2) return;
+            const badge = tab2.querySelector('.level-badge');
+            if (level1Completed) {
+                tab2.classList.remove('locked');
+                tab2.removeAttribute('title');
+                if (badge) {
+                    badge.textContent = '双榀立体';
+                } else {
+                    tab2.innerHTML = '第 2 关 · 立体营造';
+                }
+            } else {
+                tab2.classList.add('locked');
+                tab2.setAttribute('title', '通关第一关后解锁');
+                if (badge) {
+                    badge.textContent = '🔒 未解锁';
+                } else {
+                    tab2.innerHTML = '<span class="lock-icon" style="opacity:0.75; margin-right:3px;">🔒</span>第 2 关 · 立体营造';
+                }
+            }
+        }
+
+        function switchToLevel(lvl) {
+            if (lvl === 2 && !level1Completed) {
+                showLockedLevelNotice();
+                return;
+            }
+            currentLevel = lvl;
+
+            if (rotationAnimId) {
+                cancelAnimationFrame(rotationAnimId);
+                rotationAnimId = null;
+            }
+
+            // 更新顶部切换栏与徽章
+            const levelSelector = document.getElementById('levelSelector');
+            const levelBadge = document.getElementById('levelBadge');
+            const viewControls = document.getElementById('viewControls');
+            const tab1 = document.getElementById('levelBtn1');
+            const tab2 = document.getElementById('levelBtn2');
+
+            if (lvl === 1) {
+                tab1.classList.add('active');
+                tab2.classList.remove('active');
+                levelBadge.textContent = '第一关：单榀排架 · 平面基础';
+                viewControls.style.display = 'none';
+                partsData = level1PartsData;
+            } else {
+                tab1.classList.remove('active');
+                tab2.classList.add('active');
+                levelBadge.textContent = '第二关：双榀立体 · 空间营造';
+                viewControls.style.display = 'flex';
+                partsData = level2PartsData;
+            }
+
+            restartCurrentLevel();
+        }
+
+        function restartCurrentLevel() {
+            placedParts = [];
+            isDragging = false;
+            draggedObject = null;
+            errorCount = {};
+
+            if (rotationAnimId) {
+                cancelAnimationFrame(rotationAnimId);
+                rotationAnimId = null;
+            }
+
+            const partsToRemove = [];
+            scene.traverse(child => {
+                if (child.userData && child.userData.partId && !child.userData.isZone) {
+                    partsToRemove.push(child);
+                }
+            });
+            partsToRemove.forEach(obj => {
+                if (obj.parent) obj.parent.remove(obj);
+                else scene.remove(obj);
+            });
+            draggableObjects = [];
+
+            if (builtGroup) {
+                scene.remove(builtGroup);
+                builtGroup = null;
+            }
+
+            targetZones.forEach(z => {
+                scene.remove(z);
+            });
+            targetZones = [];
+
+            if (currentLevel === 2) {
+                createStagingDeck();
+                setCameraView('perspective');
+            } else {
+                if (stagingDeckGroup) {
+                    scene.remove(stagingDeckGroup);
+                    stagingDeckGroup = null;
+                }
+                camera.position.set(0, 2.3, 8.5);
+                camera.lookAt(0, 1.8, 0);
+                camTarget.set(0, 1.8, 0);
+            }
+
+            createTargetZones();
+            createDraggableParts();
+            createUI();
+
+            document.getElementById('complete').classList.remove('show');
+            document.getElementById('book').classList.remove('show');
+
+            gameStartTime = Date.now();
+            showCraftsmanWelcome();
+        }
+
+        function startRotation() {
+            let angle = camTheta;
+            function rotate() {
+                angle += 0.005;
+                camera.position.x = camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(angle);
+                camera.position.y = camTarget.y + camRadius * Math.cos(camPhi);
+                camera.position.z = camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(angle);
+                camera.lookAt(camTarget);
+                rotationAnimId = requestAnimationFrame(rotate);
+            }
+            rotate();
+        }
+
+        function returnToOriginal(obj, callback) {
+            isReturningToOriginal = true;
+            targetZones.forEach(zone => {
+                zone.traverse((child) => {
+                    if (child.material) {
+                        if (child.isMesh) {
+                            child.material.opacity = 0.06;
+                            child.material.color.setHex(0x5c4d38);
+                        }
+                        if (child.isLineSegments) {
+                            child.material.opacity = 0.65;
+                            child.material.color.setHex(0x5c4d38);
+                        }
+                    }
+                });
+            });
+
+            const originalPos = obj.userData.originalPos;
+            const startPos = obj.position.clone();
+            const duration = 400;
+            const startTime = Date.now();
+
+            function animateReturn() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                obj.position.lerpVectors(startPos, originalPos, progress);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateReturn);
+                } else {
+                    isReturningToOriginal = false;
+                    if (callback) callback();
+                }
+            }
+
+            animateReturn();
+        }
+
+        function showBook(content, isSuccess) {
+            const book = document.getElementById('book');
+            book.className = 'show ' + (isSuccess ? 'success' : 'error');
+            document.getElementById('bookTitle').textContent = isSuccess ? '✓ 放置正确' : '✗ 放置错误';
+            document.getElementById('bookQuote').textContent = content.quote;
+            document.getElementById('bookSource').textContent = content.source;
+            document.getElementById('bookExp').textContent = content.exp;
+
+            setTimeout(() => {
+                book.classList.remove('show');
+            }, 3500);
+        }
+
+        function saveGameRecord() {
+            const completionTime = (Date.now() - gameStartTime) / 1000;
+            const totalErrors = Object.values(errorCount).reduce((a, b) => a + b, 0);
+            
+            const token = localStorage.getItem('chuandou_token');
+            if (token) {
+                fetch('/api/game/records', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        completion_time: completionTime,
+                        error_count: totalErrors,
+                        is_completed: true,
+                        level: currentLevel
+                    })
+                }).catch(err => {
+                    console.warn('保存成绩失败:', err);
+                });
+            }
+        }
+
+        function onResize() {
+            const container = document.getElementById('scene');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function closeHelp() {
+            document.getElementById('helpModal').classList.remove('show');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

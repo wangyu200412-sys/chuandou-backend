@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>川西穿斗建筑 · 交互式数字展厅</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@300;400;600&family=Inter:wght@200;300;400;500&family=Noto+Serif+SC:wght@200;300;400;500;600&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --bg-dark: #080a0f;
+      --gold-stream: #d4af67;
+      --gold-light: #fff2d9;
+      --gold-dim: #7a633a;
+      --hud-border: rgba(212, 175, 103, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #e5e9f0;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      cursor: none;
+    }
+
+    .font-serif-sc {
+      font-family: 'Noto Serif SC', serif;
+    }
+
+    .font-calligraphy {
+      font-family: 'Zhi Mang Xing', cursive;
+    }
+
+    .font-cinzel {
+      font-family: 'Cinzel', serif;
+    }
+
+    .vertical-title {
+      writing-mode: vertical-rl;
+      letter-spacing: 0.65em;
+    }
+
+    /* 噪点与胶片微颗粒纹理 */
+    .film-grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.045;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* 背景层与底部云雾合成 */
+    .bg-canvas-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      background-color: #080a0f;
+      background-image: url('{{ url_for("static", filename="images/first.jpg") }}');
+      background-size: cover;
+      background-position: center;
+    }
+
+    /* 文字入场遮罩动画 (Staggered Mask Animation) */
+    .mask-reveal {
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: bottom;
+    }
+
+    .mask-item {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(115%) rotate(1.2deg);
+      filter: blur(8px);
+      transition: transform 1.35s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 1.35s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 1.35s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform, opacity, filter;
+    }
+
+    .page-loaded .mask-item {
+      opacity: 1;
+      transform: translateY(0%) rotate(0deg);
+      filter: blur(0px);
+    }
+
+    /* 流光溢彩扫光字效 (Liquid Gold Sweep) */
+    .gold-sweep-text {
+      background: linear-gradient(
+        115deg,
+        #cfd6e0 0%,
+        #ffffff 18%,
+        #e2c487 38%,
+        #fff7e6 48%,
+        #d1a95e 58%,
+        #9ea8b6 75%,
+        #f2f5fa 100%
+      );
+      background-size: 260% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: sweepAnim 15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      display: inline-block;
+    }
+
+    @keyframes sweepAnim {
+      0% { background-position: 220% 0; }
+      45%, 100% { background-position: -80% 0; }
+    }
+
+    /* 悬浮微动呼吸 */
+    .floating-subtle {
+      animation: floatBreath 7s ease-in-out infinite;
+    }
+
+    @keyframes floatBreath {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-5px); }
+    }
+
+    /* 自定义先锋光标体系 */
+    #cursor-dot {
+      position: fixed;
+      width: 4px;
+      height: 4px;
+      background: var(--gold-stream);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1000;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px var(--gold-stream);
+    }
+
+    #cursor-crosshair {
+      position: fixed;
+      width: 32px;
+      height: 32px;
+      border: 1px solid rgba(212, 175, 103, 0.35);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 999;
+      transform: translate(-50%, -50%);
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 0.3s, background-color 0.3s;
+    }
+
+    /* 探索按键流光边框 */
+    .cta-explore {
+      position: relative;
+      border: 1px solid var(--hud-border);
+      background: rgba(10, 13, 19, 0.65);
+      backdrop-filter: blur(12px);
+      transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .cta-explore::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      background: linear-gradient(90deg, transparent, rgba(230, 200, 139, 0.6), transparent);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      padding: 1px;
+    }
+
+    .cta-explore:hover {
+      border-color: rgba(230, 200, 139, 0.85);
+      box-shadow: 0 0 35px rgba(212, 175, 103, 0.22), inset 0 0 15px rgba(212, 175, 103, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .cta-explore:hover::before {
+      opacity: 1;
+    }
+  </style>
+  <script>
+    if (window.self !== window.top) {
+      document.write('<style>header > div:first-child, header nav { display: none !important; }</style>');
+    }
+  </script>
+</head>
+
+<body class="relative flex flex-col justify-between select-none">
+  <div class="film-grain"></div>
+  <div id="cursor-dot"></div>
+  <div id="cursor-crosshair"></div>
+
+  <!-- 背景渲染层：背景图 + 底部烟霭 + 流光光纤 -->
+  <div class="bg-canvas-container">
+    <canvas id="luminousStreamCanvas" class="absolute inset-0 w-full h-full block z-[3] pointer-events-none"></canvas>
+    <!-- 暗角与中央文字景深晕影 -->
+    <div class="absolute inset-0 z-[4] pointer-events-none bg-[radial-gradient(circle_at_50%_48%,transparent_30%,rgba(8,10,15,0.75)_80%,#080a0f_100%)]"></div>
+  </div>
+
+  <!-- 顶部数字化 HUD 状态条 -->
+  <header class="relative z-30 w-full px-8 md:px-14 pt-8 flex items-center justify-between text-xs tracking-[0.25em] text-[#6d7585]">
+    <div class="flex items-center space-x-4">
+      <div class="mask-reveal">
+        <div class="mask-item flex flex-col" style="transition-delay: 200ms;">
+          <div class="flex items-center">
+            <span class="font-serif-sc text-xl text-[#e6c88f] tracking-[0.25em] font-medium drop-shadow-[0_0_12px_rgba(212,175,103,0.5)]">
+              穿斗·匠心
+            </span>
+          </div>
+          <span class="font-cinzel text-[9px] text-[#7d879c] tracking-[0.4em] mt-1.5 pl-1 opacity-80">
+            CHUANDOU CRAFTSMANSHIP
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 顶部导航 -->
+    <nav class="hidden lg:flex items-center space-x-12 text-[16px] font-serif-sc tracking-[0.2em] absolute left-1/2 transform -translate-x-1/2">
+      <a href="/" class="text-[#e2c487] transition-colors flex items-center gap-2">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#d4af67] shadow-[0_0_8px_#d4af67]"></span>
+        首页
+      </a>
+      <a href="#construction" class="text-[#848d9f] hover:text-[#e2c487] transition-colors">穿斗营造</a>
+      <a href="#visiting" class="text-[#848d9f] hover:text-[#e2c487] transition-colors">寻访古建</a>
+      <a href="#wisdom" class="text-[#848d9f] hover:text-[#e2c487] transition-colors">读懂智慧</a>
+      <a href="#heritage" class="text-[#848d9f] hover:text-[#e2c487] transition-colors">传承文脉</a>
+    </nav>
+
+    <!-- 右上角地理与系统状态 -->
+    <div class="flex items-center space-x-4 font-mono text-[10px] text-[#555d6e]">
+      <span class="tracking-widest hidden sm:inline">CHUANDOU STRUCTURAL TWIN</span>
+      <span class="text-[#262c38] hidden sm:inline">|</span>
+      <span class="text-[#96a0b5]">30°40′N 104°04′E</span>
+    </div>
+  </header>
+
+  <!-- 右侧竖版文化装帧标签 -->
+  <aside class="absolute right-8 md:right-12 top-1/2 -translate-y-1/2 z-30 pointer-events-none flex flex-col items-center">
+    <div class="w-[1px] h-16 bg-gradient-to-b from-transparent to-[#333a4a] mb-6"></div>
+    <div class="mask-reveal">
+      <div class="mask-item vertical-title font-serif-sc text-xs md:text-sm font-extralight text-[#798295] tracking-[0.8em]" style="transition-delay: 900ms;">
+        川西 · 穿斗 · 营造手册
+      </div>
+    </div>
+    <div class="w-[1px] h-16 bg-gradient-to-t from-transparent to-[#333a4a] mt-6"></div>
+  </aside>
+
+  <!-- 左侧与四角装饰线与刻度 -->
+  <div class="absolute left-8 md:left-14 top-1/2 -translate-y-1/2 z-20 pointer-events-none hidden md:flex flex-col space-y-6 text-[10px] font-mono text-[#434b5c]">
+    <div class="flex items-center gap-2">
+      <span class="w-1.5 h-[1px] bg-[#d4af67]"></span>
+      <span>X: 669.09606</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="w-1.5 h-[1px] bg-[#434b5c]"></span>
+      <span>Z: -32008</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="w-1.5 h-[1px] bg-[#434b5c]"></span>
+      <span>FPS: 60.0 STABLE</span>
+    </div>
+  </div>
+
+  <!-- 中心核心视觉：诗意与流光排版 -->
+  <main class="relative z-30 flex-1 flex flex-col items-center justify-center px-6 text-center max-w-4xl mx-auto pointer-events-none floating-subtle">
+    
+    <!-- 顶标微字 -->
+    <div class="mask-reveal mb-4">
+      <div class="mask-item flex items-center space-x-3" style="transition-delay: 450ms;">
+        <span class="w-7 h-[1px] bg-[#d4af67]/60"></span>
+        <span class="font-cinzel text-[9px] md:text-[10px] tracking-[0.5em] text-[#d4af67] font-light">
+          VERNACULAR ARCHITECTURE & SEISMIC RESILIENCE
+        </span>
+        <span class="w-7 h-[1px] bg-[#d4af67]/60"></span>
+      </div>
+    </div>
+
+    <!-- 主标题：逐字蒙版 + 金属流动光扫 -->
+    <div class="relative my-2">
+      <div class="mask-reveal">
+        <h1 class="mask-item font-calligraphy text-7xl sm:text-8xl md:text-[8rem] font-normal tracking-[0.12em] text-[#edf1f8] leading-tight" style="transition-delay: 600ms;">
+          <span class="gold-sweep-text">川西穿斗建筑</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- 英文副标题 -->
+    <div class="mask-reveal mt-3 mb-6">
+      <p class="mask-item font-cinzel text-[10px] sm:text-xs md:text-sm tracking-[0.42em] text-[#7d879c] font-light" style="transition-delay: 750ms;">
+        THE INTERACTIVE MANUAL OF CHUANDOU CONSTRUCTION
+      </p>
+    </div>
+
+    <!-- 描述文案（呼吸留白） -->
+    <div class="mask-reveal max-w-xl mx-auto mb-10">
+      <p class="mask-item font-serif-sc text-[11px] sm:text-xs md:text-sm font-extralight text-[#9ba5b8] leading-relaxed tracking-widest" style="transition-delay: 900ms;">
+        以数字化视角，拆解川西穿斗木构的营造法式与抗震智慧。<br/>
+        立柱穿枋，贯通交融；柔性耗能，千年不倾。
+      </p>
+    </div>
+
+    <!-- 交互 CTA 按钮 -->
+    <div class="pointer-events-auto">
+      <div class="mask-reveal">
+        <div class="mask-item" style="transition-delay: 1050ms;">
+          <button id="enterExperienceBtn" class="cta-explore group px-8 py-3.5 rounded-full flex items-center space-x-4 cursor-none">
+            <span class="w-2 h-2 rounded-full bg-[#d4af67] shadow-[0_0_10px_#d4af67] group-hover:scale-125 transition-transform duration-300"></span>
+            <span class="font-cinzel text-[11px] tracking-[0.35em] text-[#f0f3f8] group-hover:text-[#fff2d9] transition-colors">
+              EXPLORE / 开启探索
+            </span>
+            <svg class="w-3.5 h-3.5 text-[#d4af67] transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 底部微数据栏 -->
+  <footer class="relative z-30 w-full px-8 md:px-14 pb-8 flex flex-col sm:flex-row items-center justify-between text-[11px] tracking-[0.25em] text-[#555d6e] border-t border-[#151a24]/80 pt-6">
+    <div class="flex items-center space-x-6 mb-3 sm:mb-0">
+      <span class="font-mono text-[#d4af67]">01</span>
+      <span class="hover:text-[#9ea8bc] transition-colors">穿枋榫卯节点受力仿真</span>
+      <span class="text-[#202633]">/</span>
+      <span class="font-mono text-[#d4af67]">02</span>
+      <span class="hover:text-[#9ea8bc] transition-colors">双向摆动滞回耗能机理</span>
+    </div>
+
+    <div class="flex items-center space-x-4 font-mono text-[10px]">
+      <span class="text-[#414856]">[ INTERACTIVE 3D TWIN ENGINE READY ]</span>
+      <span class="w-2 h-2 rounded-full border border-[#d4af67]/40 animate-ping"></span>
+    </div>
+  </footer>
+
+  <!-- 探索点击弹窗 HUD -->
+  <div id="modalHud" class="fixed inset-0 z-50 flex items-center justify-center bg-[#06080b]/85 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-500">
+    <div class="relative bg-[#0d1017] border border-[#d4af67]/40 p-8 md:p-12 max-w-lg w-full mx-4 rounded-lg shadow-2xl transform scale-95 transition-transform duration-500" id="modalCard">
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <span class="font-cinzel text-xs text-[#d4af67] tracking-[0.3em]">SYSTEM LOADING</span>
+          <h3 class="font-serif-sc text-xl text-[#edf1f8] font-light mt-1">载入川西穿斗建筑 3D 营造沙盘</h3>
+        </div>
+        <button id="closeModalBtn" class="text-[#727c8e] hover:text-[#fff] text-xl font-mono cursor-pointer">&times;</button>
+      </div>
+      <p class="font-serif-sc text-sm text-[#8c96a8] leading-relaxed mb-6 font-light">
+        正在解构包含「中柱、边柱、穿枋、挑枋、瓜柱」的 11 项核心构件力学拓扑，并加载贝塞尔曲线粒子震动传导系统...
+      </p>
+      <div class="w-full bg-[#161b26] h-1 rounded overflow-hidden">
+        <div class="bg-gradient-to-r from-[#d4af67] to-[#fff2d9] h-full w-2/3 animate-pulse"></div>
+      </div>
+      <div class="mt-4 flex justify-between text-[10px] font-mono text-[#5f687a]">
+        <span>SHOCK ABSORPTION: 94.2%</span>
+        <span>STAGE: INITIALIZING</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. 页面加载与文字错落展开
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        document.body.classList.add('page-loaded');
+      }, 120);
+    });
+
+    /* ==========================================================================
+       2. 高级光标追随与磁吸交互
+       ========================================================================== */
+    const dot = document.getElementById('cursor-dot');
+    const cross = document.getElementById('cursor-crosshair');
+    let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let crossPos = { x: mouse.x, y: mouse.y };
+
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      dot.style.left = `${mouse.x}px`;
+      dot.style.top = `${mouse.y}px`;
+    });
+
+    function renderCursor() {
+      crossPos.x += (mouse.x - crossPos.x) * 0.18;
+      crossPos.y += (mouse.y - crossPos.y) * 0.18;
+      cross.style.left = `${crossPos.x}px`;
+      cross.style.top = `${crossPos.y}px`;
+      requestAnimationFrame(renderCursor);
+    }
+    renderCursor();
+
+    const interactives = document.querySelectorAll('button, a, .cta-explore, #closeModalBtn');
+    interactives.forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        cross.style.width = '48px';
+        cross.style.height = '48px';
+        cross.style.borderColor = 'rgba(212, 175, 103, 0.9)';
+        cross.style.backgroundColor = 'rgba(212, 175, 103, 0.08)';
+      });
+      el.addEventListener('mouseleave', () => {
+        cross.style.width = '32px';
+        cross.style.height = '32px';
+        cross.style.borderColor = 'rgba(212, 175, 103, 0.35)';
+        cross.style.backgroundColor = 'transparent';
+      });
+    });
+
+    /* ==========================================================================
+       3. 全局尺寸与窗口缩放
+       ========================================================================== */
+    let W, H;
+
+    function resizeCanvas() {
+      W = window.innerWidth;
+      H = window.innerHeight;
+    }
+
+    /* ==========================================================================
+       4. 动态流光感 Canvas 系统 (Luminous Stress Fibers & Gold Embers)
+       ========================================================================== */
+    const streamCanvas = document.getElementById('luminousStreamCanvas');
+    const sCtx = streamCanvas.getContext('2d');
+
+    // 贝塞尔流光束
+    class LuminousFiber {
+      constructor(points, speed, width, color = '#d4af67') {
+        this.basePoints = points; // 归一化坐标 [[x,y], [cp1x, cp1y], [cp2x, cp2y], [x2, y2]]
+        this.speed = speed;
+        this.progress = Math.random();
+        this.width = width;
+        this.color = color;
+        this.tailLength = 0.12;
+      }
+
+      update() {
+        this.progress += this.speed;
+        if (this.progress > 1) this.progress = 0;
+      }
+
+      draw(ctx, w, h, mouseInfluenceX, mouseInfluenceY) {
+        // 计算受鼠标微弱引力影响的点
+        const pts = this.basePoints.map((p, idx) => {
+          let px = p[0] * w;
+          let py = p[1] * h;
+          if (idx === 1 || idx === 2) {
+            px += mouseInfluenceX * 25;
+            py += mouseInfluenceY * 15;
+          }
+          return { x: px, y: py };
+        });
+
+        // 细微的骨架基准线
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.bezierCurveTo(pts[1].x, pts[1].y, pts[2].x, pts[2].y, pts[3].x, pts[3].y);
+        ctx.strokeStyle = 'rgba(212, 175, 103, 0.04)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // 计算头部和尾部的贝塞尔插值点
+        const tHead = this.progress;
+        const tTail = Math.max(0, this.progress - this.tailLength);
+
+        const head = evalCubicBezier(pts[0], pts[1], pts[2], pts[3], tHead);
+        const tail = evalCubicBezier(pts[0], pts[1], pts[2], pts[3], tTail);
+
+        // 绘制光芒拖尾
+        const grad = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+        grad.addColorStop(0, 'rgba(212, 175, 103, 0)');
+        grad.addColorStop(0.7, 'rgba(212, 175, 103, 0.35)');
+        grad.addColorStop(1, 'rgba(255, 245, 225, 0.95)');
+
+        ctx.beginPath();
+        ctx.moveTo(tail.x, tail.y);
+        ctx.lineTo(head.x, head.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = this.width;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // 光核微光晕
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, 2.2, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff9ec';
+        ctx.shadowColor = '#d4af67';
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    function evalCubicBezier(p0, p1, p2, p3, t) {
+      const cx = 3 * (p1.x - p0.x);
+      const bx = 3 * (p2.x - p1.x) - cx;
+      const ax = p3.x - p0.x - cx - bx;
+
+      const cy = 3 * (p1.y - p0.y);
+      const by = 3 * (p2.y - p1.y) - cy;
+      const ay = p3.y - p0.y - cy - by;
+
+      const x = ax * (t * t * t) + bx * (t * t) + cx * t + p0.x;
+      const y = ay * (t * t * t) + by * (t * t) + cy * t + p0.y;
+      return { x, y };
+    }
+
+    // 左侧与右侧木柱流光纤维轨迹
+    const fibers = [
+      // 左侧木排架应力流向
+      new LuminousFiber([[0.06, 0.82], [0.09, 0.58], [0.11, 0.38], [0.13, 0.20]], 0.0035, 2.2),
+      new LuminousFiber([[0.12, 0.85], [0.13, 0.62], [0.16, 0.45], [0.18, 0.28]], 0.0042, 1.8),
+      new LuminousFiber([[0.04, 0.65], [0.10, 0.62], [0.15, 0.60], [0.22, 0.58]], 0.0031, 1.6), // 水平穿枋
+
+      // 右侧木排架应力流向
+      new LuminousFiber([[0.94, 0.82], [0.91, 0.58], [0.89, 0.38], [0.87, 0.20]], 0.0038, 2.2),
+      new LuminousFiber([[0.88, 0.85], [0.87, 0.62], [0.84, 0.45], [0.82, 0.28]], 0.0045, 1.8),
+      new LuminousFiber([[0.96, 0.65], [0.90, 0.62], [0.85, 0.60], [0.78, 0.58]], 0.0029, 1.6)  // 水平穿枋
+    ];
+
+    // 漂浮的微光尘埃
+    const embers = [];
+    for (let i = 0; i < 75; i++) {
+      embers.push({
+        x: Math.random(),
+        y: Math.random(),
+        vx: (Math.random() - 0.5) * 0.0003,
+        vy: -0.0003 - Math.random() * 0.0006,
+        size: Math.random() * 1.5 + 0.4,
+        alpha: Math.random() * 0.65 + 0.2,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+
+    // 流光主循环
+    function loopStreams() {
+      sCtx.clearRect(0, 0, W, H);
+      sCtx.globalCompositeOperation = 'lighter';
+
+      const normMouseX = (mouse.x / W - 0.5);
+      const normMouseY = (mouse.y / H - 0.5);
+
+      // 渲染流光纤维
+      fibers.forEach(fiber => {
+        fiber.update();
+        fiber.draw(sCtx, W, H, normMouseX, normMouseY);
+      });
+
+      // 渲染金芒尘埃
+      embers.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.phase += 0.025;
+
+        if (p.y < 0) {
+          p.y = 1;
+          p.x = Math.random();
+        }
+
+        const px = p.x * W;
+        const py = p.y * H;
+        const dynamicAlpha = p.alpha * (0.6 + Math.sin(p.phase) * 0.4);
+
+        sCtx.beginPath();
+        sCtx.arc(px, py, p.size, 0, Math.PI * 2);
+        sCtx.fillStyle = `rgba(212, 175, 103, ${dynamicAlpha})`;
+        sCtx.fill();
+      });
+
+      sCtx.globalCompositeOperation = 'source-over';
+      requestAnimationFrame(loopStreams);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      streamCanvas.width = W;
+      streamCanvas.height = H;
+    });
+
+    resizeCanvas();
+    streamCanvas.width = W;
+    streamCanvas.height = H;
+    loopStreams();
+
+    /* ==========================================================================
+       5. 按钮点击自动跳转到第二页
+       ========================================================================== */
+    const enterBtn = document.getElementById('enterExperienceBtn');
+
+    enterBtn.addEventListener('click', () => {
+      if (window.parent && window.parent !== window) {
+        const targetEl = window.parent.document.getElementById('construction');
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
+
+    /* ==========================================================================
+       6. 父页面导航联动 (Iframe 内部链接点击)
+       ========================================================================== */
+    document.querySelectorAll('nav a').forEach(a => {
+      a.addEventListener('click', e => {
+        const href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+          e.preventDefault();
+          const targetId = href.substring(1);
+          if (window.parent && window.parent !== window) {
+            const targetEl = window.parent.document.getElementById(targetId);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

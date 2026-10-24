@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>穿斗·匠心 - 全景演变</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <!-- 引入现代化平滑惯性阻尼滚动引擎 (Lenis) -->
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #0D0D0C;
+            --gold: #A68B5B;
+            --ochre: #8E443D;
+            --paper-white: #E6EDF3;
+            --ink-black: #1a1a1a;
+            --border-standard: 1px solid transparent;
+        }
+
+        html {
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        html.lenis, html.lenis body {
+            height: auto;
+        }
+        .lenis.lenis-smooth {
+            scroll-behavior: auto !important;
+        }
+        .lenis.lenis-smooth [data-lenis-prevent] {
+            overscroll-behavior: contain;
+        }
+        .lenis.lenis-stopped {
+            overflow: hidden;
+        }
+        .lenis.lenis-scrolling iframe {
+            pointer-events: none; /* 关键：滚动过程中暂停 iframe 鼠标捕获，实现如丝顺滑的真实滚轮惯性 */
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--paper-white);
+            font-family: 'SFMono-Regular', Consolas, monospace;
+        background-image: 
+            radial-gradient(circle at 50% 50%, rgba(13, 13, 12, 0.8) 0%, rgba(5, 5, 5, 1) 100%),
+            url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E");
+        }
+        section {
+            height: 100vh;
+            width: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        #home, #culture {
+            display: block;
+            height: 100vh;
+            width: 100vw;
+            padding: 0;
+            margin: 0;
+        }
+        #home iframe, #culture iframe {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            display: block;
+        }
+        .viewfinder-window {
+            position: relative;
+            width: 85vw;
+            height: 78vh;
+            border: var(--border-standard);
+        border-image: linear-gradient(to bottom, rgba(166, 139, 91, 0.6), transparent) 1;
+            background: transparent;
+            box-sizing: border-box;
+        box-shadow: inset 0 0 50px rgba(0,0,0,0.8), 0 0 40px rgba(166, 139, 91, 0.15);
+        }
+        .corner { position: absolute; width: 40px; height: 40px; pointer-events: none; z-index: 10; }
+        .corner-tl { top: -4px; left: -4px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+        .corner-tl::before { content: ''; position: absolute; top: 6px; left: 6px; width: 15px; height: 15px; border-top: 1px solid var(--ochre); border-left: 1px solid var(--ochre); }
+        .corner-tl::after { content: ''; position: absolute; top: 0; left: 0; width: 6px; height: 6px; background: var(--ochre); }
+        .corner-tr { top: -4px; right: -4px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+        .corner-tr::before { content: ''; position: absolute; top: 6px; right: 6px; width: 15px; height: 15px; border-top: 1px solid var(--ochre); border-right: 1px solid var(--ochre); }
+        .corner-tr::after { content: ''; position: absolute; top: 0; right: 0; width: 6px; height: 6px; background: var(--ochre); }
+        .corner-bl { bottom: -4px; left: -4px; border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+        .corner-bl::before { content: ''; position: absolute; bottom: 6px; left: 6px; width: 15px; height: 15px; border-bottom: 1px solid var(--ochre); border-left: 1px solid var(--ochre); }
+        .corner-bl::after { content: ''; position: absolute; bottom: 0; left: 0; width: 6px; height: 6px; background: var(--ochre); }
+        .corner-br { bottom: -4px; right: -4px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+        .corner-br::before { content: ''; position: absolute; bottom: 6px; right: 6px; width: 15px; height: 15px; border-bottom: 1px solid var(--ochre); border-right: 1px solid var(--ochre); }
+        .corner-br::after { content: ''; position: absolute; bottom: 0; right: 0; width: 6px; height: 6px; background: var(--ochre); }
+        .ancient-book-label {
+            position: absolute;
+            top: 20px;
+            right: -60px;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.1rem;
+            color: var(--gold);
+            letter-spacing: 12px;
+            pointer-events: none;
+        border-left: 1px solid rgba(166, 139, 91, 0.4);
+            padding-left: 12px;
+        text-shadow: 0 0 15px rgba(166, 139, 91, 0.3);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+        iframe.loaded {
+            opacity: 1;
+        }
+        .hero-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            opacity: 0.6; 
+        }
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 9999; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(13, 13, 12, 0.95) 0%, rgba(13, 13, 12, 0.8) 70%, transparent 100%);
+            border-bottom: none;
+            transform: translateY(0) !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transition: all 0.3s ease;
+        }
+
+        .navbar::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            pointer-events: auto; 
+        }
+
+        .navbar:hover, .navbar.not-at-home {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto; 
+        }
+
+        .nav-left, .nav-center, .nav-right {
+            pointer-events: auto; 
+        }
+        .nav-left {
+            flex: 1;
+            display: flex;
+            justify-content: flex-start;
+        }
+        .nav-center {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .nav-right {
+            flex: 1;
+        }
+
+        .navbar .logo, .nav-center a {
+            font-family: 'Noto Serif SC', serif;
+            text-decoration: none;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--paper-white);
+            letter-spacing: 4px;
+            white-space: nowrap;
+        }
+        .navbar .logo span { color: var(--gold); }
+        
+        .nav-center a {
+            font-size: 0.95rem;
+            color: var(--paper-white);
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            letter-spacing: 3px;
+            opacity: 0.8;
+        }
+        .nav-center a:hover { 
+            color: var(--gold); 
+            opacity: 1;
+        }
+
+        .has-dropdown { position: relative; }
+        .nav-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(255, 253, 240, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(184, 155, 94, 0.4);
+        box-shadow: 0 0 30px rgba(166, 139, 91, 0.15);
+            border-radius: 4px;
+            padding: 0.5rem 0;
+            min-width: 140px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1050;
+        }
+        .nav-dropdown::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid rgba(255, 253, 240, 0.1);
+        }
+        .has-dropdown:hover .nav-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(5px);
+            pointer-events: auto;
+        }
+        .nav-dropdown a {
+            display: block !important;
+            padding: 0.8rem 1.5rem !important;
+            color: var(--paper-white) !important;
+            text-align: center;
+            font-size: 0.85rem !important;
+        border-bottom: 1px dashed rgba(166, 139, 91, 0.3);
+            text-transform: none !important;
+            letter-spacing: 2px !important;
+        }
+        .nav-dropdown a:last-child {
+            border-bottom: none;
+        }
+        .nav-dropdown a:hover {
+            color: #8b4513 !important;
+            background: rgba(139, 69, 19, 0.05);
+        }
+        .hero-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+            z-index: 10;
+            pointer-events: none; /* 无痕鼠标穿透 */
+        }
+
+        .hero-title {
+            font-size: 64px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--paper-white);
+            letter-spacing: 12px;
+            font-family: 'Noto Serif SC', serif;
+        }
+        .hero-subtitle {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 1.2rem;
+            font-weight: 300;
+            letter-spacing: 0.45em;
+            color: #fafafa;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45);
+            text-transform: uppercase;
+        }
+
+        #main-title {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 72px; 
+            font-weight: 200; /* 极致纤细字重 */
+            margin-bottom: 20px;
+            color: #ffffff; /* 亮白色 */
+            letter-spacing: 0.45em; /* 极大的气孔与留白间距 */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45); /* 隐形的图形学微观阴影托底 */
+            position: relative;
+            z-index: 10;
+        }
+
+        #sub-title {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 1.4rem;
+            font-weight: 300;
+            color: #fafafa;
+            letter-spacing: 0.45em;
+            margin-top: 20px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45);
+            position: relative;
+            z-index: 10;
+        }
+
+        .section-meta {
+            position: absolute;
+            bottom: 4vh;
+            left: 7.5vw;
+            display: flex;
+            align-items: baseline;
+            gap: 15px;
+            z-index: 20;
+            pointer-events: none; 
+        }
+        .meta-num {
+        font-family: 'Noto Serif SC', serif;
+            font-size: 2rem;
+            color: var(--gold);
+            font-weight: 300;
+        opacity: 0.35;
+        }
+        .meta-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 0.9rem;
+            color: var(--paper-white);
+            letter-spacing: 3px;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+    </style>
+    <script>
+        if (window.location.hash) {
+            window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="nav-left">
+            <a href="#home" class="logo">穿斗<span>·</span>匠心</a>
+        </div>
+        <ul class="nav-center">
+            <li><a href="#home">首页</a></li>
+            <li><a href="#construction">穿斗营造</a></li>
+        <li><a href="#visiting">寻访古建</a></li>
+            <li><a href="#wisdom">读懂智慧</a></li>
+            <li><a href="#culture">传承文脉</a></li>
+        </ul>
+        <div class="nav-right">
+        </div>
+    </nav>
+    <section id="home">
+        <iframe src="{{ url_for('firstpage') }}" onload="this.classList.add('loaded'); processIframeNav(this);"></iframe>
+    </section>
+    <section id="construction">
+        <div class="viewfinder-window">
+            <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+            <div class="ancient-book-label">川西·穿斗·营造手册</div>
+            <iframe class="lazy-iframe" data-src="{{ url_for('build3d') }}" onload="this.classList.add('loaded'); processIframeNav(this)"></iframe>
+        </div>
+        <div class="section-meta">
+            <span class="meta-num">02</span>
+            <span class="meta-title">/ CONSTRUCTION 穿斗营造</span>
+        </div>
+    </section>
+
+    <section id="visiting">
+        <div class="viewfinder-window">
+            <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+            <div class="ancient-book-label">川西·穿斗·营造手册</div>
+            <iframe class="lazy-iframe" data-src="{{ url_for('square') }}" onload="this.classList.add('loaded'); processIframeNav(this)"></iframe>
+        </div>
+        <div class="section-meta">
+            <span class="meta-num">03</span>
+            <span class="meta-title">/ VISITING 寻访古建</span>
+        </div>
+    </section>
+
+    <section id="wisdom">
+        <div class="viewfinder-window">
+            <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+            <div class="ancient-book-label">川西·穿斗·营造手册</div>
+            <iframe class="lazy-iframe" data-src="{{ url_for('seismic') }}" scrolling="no" onload="this.classList.add('loaded'); processIframeNav(this)"></iframe>
+        </div>
+        <div class="section-meta">
+            <span class="meta-num">04</span>
+            <span class="meta-title">/ WISDOM 读懂智慧</span>
+        </div>
+    </section>
+
+    <section id="culture" style="overflow: hidden;">
+        <iframe class="lazy-iframe" data-src="{{ url_for('timeline') }}" onload="this.classList.add('loaded'); processIframeNav(this)"></iframe>
+        <div class="section-meta" style="display: none;">
+            <span class="meta-num">05</span>
+            <span class="meta-title">/ CULTURE 传承文脉</span>
+        </div>
+    </section>
+
+    <script>
+        // 强制浏览器不记录滚动位置
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+        
+        window.addEventListener('beforeunload', () => window.scrollTo(0,0));
+        window.scrollTo(0, 0);
+
+        // 确保 DOM 加载后也是在顶部
+        window.addEventListener('DOMContentLoaded', function() {
+            window.scrollTo(0, 0);
+        });
+
+        // 确保所有资源加载后还是在顶部
+        window.addEventListener('load', function() {
+            window.scrollTo(0, 0);
+            if (window.location.hash) {
+                history.replaceState(null, null, window.location.pathname);
+            }
+        });
+        
+        const SECTION_IDS = ['home', 'construction', 'visiting', 'wisdom', 'culture'];
+        let isNavigating = false;
+
+        function getCurrentSectionIndex() {
+            const scrollY = window.scrollY || window.pageYOffset || 0;
+            const vh = window.innerHeight || 1;
+            return Math.min(SECTION_IDS.length - 1, Math.max(0, Math.round(scrollY / vh)));
+        }
+
+        function scrollToSectionIndex(index) {
+            if (index < 0 || index >= SECTION_IDS.length) return;
+            const targetId = SECTION_IDS[index];
+            const targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+
+            const iframe = targetEl.querySelector('iframe.lazy-iframe');
+            if (iframe && !iframe.src) {
+                iframe.src = iframe.getAttribute('data-src');
+            }
+
+            if (lenis) {
+                lenis.scrollTo(targetEl, {
+                    offset: 0,
+                    duration: 1.2,
+                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+                });
+            } else {
+                targetEl.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function navigateSection(direction) {
+            if (isNavigating) return;
+            const currentIdx = getCurrentSectionIndex();
+            const targetIdx = currentIdx + direction;
+            if (targetIdx < 0 || targetIdx >= SECTION_IDS.length) return;
+
+            isNavigating = true;
+            scrollToSectionIndex(targetIdx);
+            setTimeout(() => {
+                isNavigating = false;
+            }, 850);
+        }
+
+        window.goToPrevSection = () => navigateSection(-1);
+        window.goToNextSection = () => navigateSection(1);
+
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'fullpage-nav-prev') {
+                navigateSection(-1);
+            } else if (e.data && e.data.type === 'fullpage-nav-next') {
+                navigateSection(1);
+            }
+        });
+
+        // 键盘全局上下键支持换页
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                navigateSection(1);
+            } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                navigateSection(-1);
+            }
+        });
+
+        function bindIframeWheelEvents(iframe) {
+            try {
+                const win = iframe.contentWindow;
+                const doc = iframe.contentDocument || (win && win.document);
+                if (!win || win.__wheelBridgeAttached) return;
+                win.__wheelBridgeAttached = true;
+
+                let touchStartY = 0;
+
+                // 同步键盘上下翻页
+                win.addEventListener('keydown', function(e) {
+                    if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                        navigateSection(1);
+                    } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                        navigateSection(-1);
+                    }
+                });
+
+                win.addEventListener('wheel', function(e) {
+                    const isCulture = (iframe.src && iframe.src.includes('timeline')) || 
+                                      (win.location && win.location.href.includes('timeline'));
+                    const isBuild3D = (iframe.src && (iframe.src.includes('build3d') || iframe.src.includes('index.html'))) || 
+                                      (win.location && (win.location.href.includes('build3d') || win.location.href.includes('index.html')));
+                    const isSeismic = (iframe.src && (iframe.src.includes('seismic') || iframe.src.includes('seismic-principle'))) || 
+                                      (win.location && (win.location.href.includes('seismic') || win.location.href.includes('seismic-principle')));
+                    const isSquare = (iframe.src && (iframe.src.includes('square') || iframe.src.includes('chuandou-building-game') || iframe.src.includes('game'))) || 
+                                      (win.location && (win.location.href.includes('square') || win.location.href.includes('chuandou-building-game') || win.location.href.includes('game')));
+
+                    // 1. 传承文脉 (长页面)：向下滚动阅读文章，只有在顶部继续向上滚时才返回上一页
+                    if (isCulture) {
+                        const iframeScrollY = win.scrollY || (doc && doc.documentElement && doc.documentElement.scrollTop) || 0;
+                        if (e.deltaY < -10 && iframeScrollY <= 2) {
+                            e.preventDefault();
+                            navigateSection(-1);
+                            return;
+                        }
+                        return;
+                    }
+
+                    // 2. 3D 建筑生长模型页 (build3d / index.html)：
+                    // 鼠标滚轮专门用于 3D 模型的放大与缩小 (Three.js OrbitControls)，不劫持换页！
+                    if (isBuild3D) {
+                        // 若用户按住 Shift 键滚动，可作为辅助快捷翻页
+                        if (e.shiftKey) {
+                            if (e.deltaY > 25) {
+                                e.preventDefault();
+                                navigateSection(1);
+                            } else if (e.deltaY < -25) {
+                                e.preventDefault();
+                                navigateSection(-1);
+                            }
+                        }
+                        return;
+                    }
+
+                    // 3. 抗震原理可视化页 (seismic)：
+                    if (isSeismic) {
+                        const isCanvas = e.target && (e.target.tagName === 'CANVAS' || (e.target.closest && e.target.closest('#canvas-container, .viewer-section')));
+                        if (isCanvas) {
+                            return; // 允许 3D 地震力粒子模型自由缩放
+                        }
+                        const isInfoPanel = e.target && e.target.closest && e.target.closest('.info-panel');
+                        if (isInfoPanel) {
+                            return; // 允许右侧信息面板内部自由滚动
+                        }
+                    }
+
+                    // 4. 穿斗营造互动工坊页 (square / chuandou-building-game / game)：
+                    // 鼠标滚轮在 3D 建筑场景与游戏区域专用于建筑模型的平滑放大缩小，绝不劫持换页！
+                    if (isSquare) {
+                        const inGame = e.target && (
+                            e.target.tagName === 'CANVAS' ||
+                            (e.target.closest && e.target.closest('#scene, #game, #construction-mode, .view-controls, .level-selector, #progressBar, #craftsmanDialog'))
+                        );
+                        if (inGame) {
+                            return; // 允许穿斗建筑模型滚轮自由缩放
+                        }
+                        const isSquareContent = e.target && e.target.closest && e.target.closest('#square-mode, .content-area, .sidebar, .main-container');
+                        if (isSquareContent) {
+                            return; // 允许古建筑广场社区内自由滚动阅读
+                        }
+                        if (e.shiftKey) {
+                            if (e.deltaY > 25) {
+                                e.preventDefault();
+                                navigateSection(1);
+                            } else if (e.deltaY < -25) {
+                                e.preventDefault();
+                                navigateSection(-1);
+                            }
+                        }
+                        return;
+                    }
+
+                    // 其它定高单屏页面：滚轮直接驱动父级平滑换页
+                    if (e.deltaY > 25) {
+                        e.preventDefault();
+                        navigateSection(1);
+                    } else if (e.deltaY < -25) {
+                        e.preventDefault();
+                        navigateSection(-1);
+                    }
+                }, { passive: false });
+
+                win.addEventListener('touchstart', function(e) {
+                    if (e.touches && e.touches[0]) touchStartY = e.touches[0].clientY;
+                }, { passive: true });
+
+                win.addEventListener('touchend', function(e) {
+                    if (!e.changedTouches || !e.changedTouches[0]) return;
+                    const deltaY = touchStartY - e.changedTouches[0].clientY;
+                    const isCulture = (iframe.src && iframe.src.includes('timeline')) || 
+                                      (win.location && win.location.href.includes('timeline'));
+                    const isBuild3D = (iframe.src && (iframe.src.includes('build3d') || iframe.src.includes('index.html'))) || 
+                                      (win.location && (win.location.href.includes('build3d') || win.location.href.includes('index.html')));
+                    const isSquare = (iframe.src && (iframe.src.includes('square') || iframe.src.includes('chuandou-building-game') || iframe.src.includes('game'))) || 
+                                      (win.location && (win.location.href.includes('square') || win.location.href.includes('chuandou-building-game') || win.location.href.includes('game')));
+                    if (isBuild3D || isSquare) return; // 避免触摸旋转/拖拽 3D 构件模型时误触换页
+                    if (isCulture) {
+                        const iframeScrollY = win.scrollY || (doc && doc.documentElement && doc.documentElement.scrollTop) || 0;
+                        if (deltaY < -40 && iframeScrollY <= 2) {
+                            navigateSection(-1);
+                        }
+                        return;
+                    }
+                    if (deltaY > 50) navigateSection(1);
+                    else if (deltaY < -50) navigateSection(-1);
+                }, { passive: true });
+            } catch(e) {}
+        }
+
+        function processIframeNav(iframe) {
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                doc.body.style.backgroundColor = '#121212';
+                
+                // 绑定滚轮穿透事件桥接
+                bindIframeWheelEvents(iframe);
+
+                if (iframe.src.includes('firstpage')) {
+                    const header = doc.querySelector('header');
+                    if (header) {
+                        const leftLogo = header.querySelector('.flex.items-center.space-x-4');
+                        const nav = header.querySelector('nav');
+                        if (leftLogo) leftLogo.style.display = 'none';
+                        if (nav) nav.style.display = 'none';
+                    }
+                    return;
+                }
+                
+                const nav = doc.querySelector('.navbar');
+                if (!nav) return;
+                
+                if (iframe.src.includes('square')) {
+                    const logo = nav.querySelector('.logo');
+                    const menu = nav.querySelector('.nav-menu');
+                    if (logo) logo.style.visibility = 'hidden';
+                    if (menu) menu.style.visibility = 'hidden';
+                    nav.style.background = 'transparent';
+                    nav.style.backdropFilter = 'none';
+                    nav.style.webkitBackdropFilter = 'none';
+                    nav.style.boxShadow = 'none';
+                    nav.style.border = 'none';
+                    nav.style.transform = 'none';
+                    nav.style.opacity = '1';
+                    nav.style.pointerEvents = 'none';
+                    const actions = nav.querySelector('.nav-actions');
+                    if(actions) {
+                        actions.style.position = 'fixed';
+                        actions.style.top = '20px';
+                        actions.style.right = '40px';
+                        actions.style.zIndex = '10001';
+                        actions.style.pointerEvents = 'auto';
+                    }
+                } else if (iframe.src.includes('game')) {
+                    if (nav) nav.style.display = 'none';
+                    const gameDiv = doc.getElementById('game');
+                    if (gameDiv) {
+                        gameDiv.style.marginTop = '0';
+                        gameDiv.style.height = '100vh';
+                    }
+                } else {
+                    nav.style.display = 'none';
+                    if (iframe.src.includes('seismic')) {
+                        doc.body.style.overflow = 'hidden';
+                        doc.documentElement.style.overflow = 'hidden';
+                    }
+                }
+            } catch(e) {}
+        }
+        // 初始化现代化高精度惯性阻尼滚动引擎 (Lenis)
+        let lenis;
+        try {
+            if (typeof Lenis !== 'undefined') {
+                lenis = new Lenis({
+                    duration: 1.25,
+                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // 经典细腻指数级缓动阻尼
+                    orientation: 'vertical',
+                    gestureOrientation: 'vertical',
+                    smoothWheel: true,
+                    wheelMultiplier: 1.0,
+                    smoothTouch: false,
+                    touchMultiplier: 1.5,
+                    infinite: false
+                });
+
+                function raf(time) {
+                    lenis.raf(time);
+                    requestAnimationFrame(raf);
+                }
+                requestAnimationFrame(raf);
+            }
+        } catch (e) {
+            console.warn('Lenis initialization safe pass:', e);
+        }
+
+        // 导航栏点击平滑锚点定位（使用 Lenis 动画引擎）
+        document.querySelectorAll('.nav-center a, .logo').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetEl = document.getElementById(targetId);
+                if (targetEl) {
+                    // 立即触发目标区域懒加载
+                    const iframe = targetEl.querySelector('iframe.lazy-iframe');
+                    if (iframe && !iframe.src) {
+                        iframe.src = iframe.getAttribute('data-src');
+                    }
+                    
+                    if (lenis) {
+                        lenis.scrollTo(targetEl, {
+                            offset: 0,
+                            duration: 1.35,
+                            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+                        });
+                    } else {
+                        targetEl.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+
+        // 懒加载观察器：接近视口即预加载对应 section 的 iframe
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const iframe = entry.target.querySelector('iframe.lazy-iframe');
+                    if (iframe && !iframe.src) {
+                        iframe.src = iframe.getAttribute('data-src');
+                    }
+                }
+            });
+        }, { rootMargin: '200px 0px 200px 0px', threshold: 0.05 });
+        
+        document.querySelectorAll('section:not(#home)').forEach(section => {
+            sectionObserver.observe(section);
+        });
+    </script>
+</body>
+</html>
