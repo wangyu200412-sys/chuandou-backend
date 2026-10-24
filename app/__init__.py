@@ -55,6 +55,8 @@ def create_app(config_name='default'):
     from app.routes.components import components_bp
     from app.routes.admin import admin_bp
     from app.routes.uploads import uploads_bp
+    # 页面路由与健康检查：保持历史端点名，保证模板中 url_for('xxx') 仍然可用
+    from app.routes.pages import register_pages
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(posts_bp, url_prefix='/api/posts')
@@ -62,6 +64,7 @@ def create_app(config_name='default'):
     app.register_blueprint(components_bp, url_prefix='/api/components')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(uploads_bp)
+    register_pages(app)
 
     # 注册错误处理
     register_error_handlers(app)

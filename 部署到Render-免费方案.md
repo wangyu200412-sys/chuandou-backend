@@ -17,7 +17,9 @@
 | `requirements.txt` | 补充 `requests`、`psycopg2-binary`，锁定兼容版本区间 |
 | `render.yaml` | 新增 Blueprint：Start Command 绑定 `$PORT`，健康检查 `/health` |
 | `runtime.txt` | 固定 Python 3.13.0 |
-| `migrate_sqlite_to_pg.py` | 新增：一次性把本地 SQLite 数据迁到 Postgres，可重复执行并重置自增序列 |
+| `app/routes/pages.py` | 新增：页面路由与 `/health` 从 `run.py` 移入应用工厂，`create_app()` 产出的应用即完整，避免启动命令写错导致整站 404 |
+| `config.py` | 开发环境不再被误判为生产环境而强要密钥 |
+| `push_and_deploy.ps1` | 新增：一条命令完成推送并打开 Supabase / Render 页面 |
 | `.gitignore` | 补充排除 `.env`、数据库、上传目录、日志、共享服务配置与临时脚本 |
 
 冒烟验证结果：临时 SQLite 建表成功；`/health` 返回 200；`/`、`/square`、`/api/components` 返回 200；`/uploads/missing.png` 返回 404。

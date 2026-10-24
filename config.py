@@ -169,12 +169,14 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    """开发环境配置"""
+    """开发环境配置：不强制要求生产密钥，方便本地启动"""
+    ENV = 'development'
     DEBUG = True
 
 
 class ProductionConfig(Config):
-    """生产环境配置"""
+    """生产环境配置：缺少密钥直接启动失败"""
+    ENV = 'production'
     DEBUG = False
 
 
