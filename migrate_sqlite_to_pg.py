@@ -44,11 +44,36 @@ def ordered_tables(engine):
     return meta.sorted_tables
 
 
+def normalize_row(table, row):
+    """
+    SQLite 与 Postgres 的类型差异处理：
+    - SQLite 布尔列存 0/1，Postgres boolean 需要 True/False
+    - 空字符串的时间列转成 None，避免 psycopg2 解析失败
+    """
+    row = dict(row)
+    for column in table.columns:
+        value = row.get(column.name)
+        if value is None:
+            continue
+
+        type_name = str(column.type).upper()
+        if "BOOL" in type_name and not isinstance(value, bool):
+            if isinstance(value, (int, float)):
+                row[column.name] = bool(value)
+            elif isinstance(value, str):
+                row[column.name] = value.strip().lower() in ("1", "true", "t", "yes", "y")
+        elif type_name.startswith(("DATE", "TIME")) and value == "":
+            row[column.name] = None
+    return row
+
+
 def table_rows(engine, table):
     with engine.connect() as conn:
         result = conn.execute(table.select())
-        cols = list(result.keys())
-        return cols, [dict(zip(cols, row)) for row in result.mappings()]
+        # RowMapping 迭代出来的是键名，必须转成 dict 才能拿到值
+        rows = [normalize_row(table, dict(mapping)) for mapping in result.mappings()]
+        cols = list(rows[0].keys()) if rows else [c.name for c in table.columns]
+        return cols, rows
 
 
 def truncate_target(conn, tables):
@@ -58,28 +83,53 @@ def truncate_target(conn, tables):
 
 
 def reset_sequences(conn, tables):
-    """重置 Postgres 自增序列，避免插入后新记录主键冲突"""
+    """
+    重置自增序列，避免迁移后新记录主键冲突。
+    现代 Postgres / SQLAlchemy 主键多为 IDENTITY 列（pg_get_serial_sequence 返回 NULL），
+    需要先查 information_schema 判断，再用 ALTER TABLE ... RESTART WITH 重置。
+    """
     fixed = []
+
     for table in tables:
         pk_cols = [c.name for c in table.primary_key.columns]
         if len(pk_cols) != 1:
             continue
         pk = pk_cols[0]
-        col = table.columns[pk]
-        if not str(getattr(col.type, "python_type", int)).lower().startswith("int"):
+        col_type = str(table.columns[pk].type).upper()
+        if "INT" not in col_type:
             continue
+
+        # 该表是否存在 IDENTITY 主键列
+        identity_col = conn.execute(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = :t "
+                "AND is_identity = 'YES' AND column_name = :c"
+            ),
+            {"t": table.name, "c": pk},
+        ).scalar()
+
+        max_value = conn.execute(
+            text(f'SELECT COALESCE(MAX("{pk}"), 0) FROM "{table.name}"')
+        ).scalar()
+
+        if identity_col:
+            conn.execute(
+                text(f'ALTER TABLE "{table.name}" ALTER COLUMN "{pk}" RESTART WITH {int(max_value) + 1}')
+            )
+            fixed.append(table.name)
+            continue
+
+        # 退回到 serial 序列
         try:
             conn.execute(
-                text(
-                    "SELECT setval(pg_get_serial_sequence(:t, :c), "
-                    "GREATEST(COALESCE((SELECT MAX(\"{c}\") FROM \"{t}\"), 0), 1), "
-                    "COALESCE((SELECT MAX(\"{c}\") FROM \"{t}\"), 0) > 0)".replace("{c}", pk).replace("{t}", table.name)
-                ),
-                {"t": table.name, "c": pk},
+                text("SELECT setval(pg_get_serial_sequence(:t, :c), :v, :has_rows)"),
+                {"t": table.name, "c": pk, "v": max(int(max_value), 1), "has_rows": int(max_value) > 0},
             )
             fixed.append(table.name)
         except Exception:
             conn.rollback()
+
     return fixed
 
 
@@ -120,14 +170,17 @@ def main():
         target_engine = db.engine
         total = 0
         with target_engine.begin() as conn:
+            # Supabase 免费层有 statement_timeout，调高避免大表迁移被取消
+            conn.execute(text("SET statement_timeout = '120s'"))
             truncate_target(conn, src_tables)
             for table in src_tables:
                 cols, rows = table_rows(src_engine, table)
                 if not rows:
                     print(f"[INFO] {table.name}: 0 行，跳过")
                     continue
-                target_table = Table(table.name, MetaData(), autoload_with=target_engine)
-                conn.execute(target_table.insert(), rows)
+                # 直接用源表结构生成 INSERT，在目标库执行
+                # （目标表由同一套 ORM 创建，列名一致；不做反射可避免超时）
+                conn.execute(table.insert(), rows)
                 total += len(rows)
                 print(f"[INFO] {table.name}: 已迁移 {len(rows)} 行")
             seq_fixed = reset_sequences(conn, src_tables)
